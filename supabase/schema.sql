@@ -25,9 +25,15 @@ create table if not exists public.assessments (
   overall_score numeric(3,2),
   decision text check (decision in ('Present', 'Hold', 'Reject')),
   decision_reasons jsonb not null default '[]'::jsonb,
+  completed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.assessments
+  add column if not exists completed boolean not null default false;
+
+create index if not exists assessments_updated_at_idx on public.assessments(updated_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger
@@ -49,7 +55,7 @@ create trigger assessments_set_updated_at
 before update on public.assessments
 for each row execute function public.set_updated_at();
 
--- No browser-direct access in the MVP. The app will use the Supabase service role
--- only from Next.js server code once persistence is connected.
+-- Browser-direct access stays blocked. PurrfectHire uses the service role only
+-- from Next.js server routes. Never expose SUPABASE_SERVICE_ROLE_KEY to the browser.
 alter table public.candidates enable row level security;
 alter table public.assessments enable row level security;
