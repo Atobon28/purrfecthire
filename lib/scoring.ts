@@ -26,6 +26,10 @@ function isMissing(value: string | boolean | null | undefined) {
   return value === null || value === undefined || value === "";
 }
 
+function isScoreKnown(score: Score | undefined) {
+  return score !== null && score !== undefined;
+}
+
 export function evaluateCandidate(
   role: RoleDefinition,
   scores: Record<string, Score>,
@@ -35,13 +39,27 @@ export function evaluateCandidate(
   const failedGateCriteria = allCriteria.filter(
     (criterion) =>
       criterion.hardGate &&
-      scores[criterion.id] !== null &&
-      scores[criterion.id] !== undefined &&
+      isScoreKnown(scores[criterion.id]) &&
       Number(scores[criterion.id]) < Number(criterion.minimumScore ?? 4),
   );
   const unknownGateCriteria = allCriteria.filter(
-    (criterion) => criterion.hardGate && (scores[criterion.id] === null || scores[criterion.id] === undefined),
+    (criterion) => criterion.hardGate && !isScoreKnown(scores[criterion.id]),
   );
+
+  const alternativeGateStates = (role.alternativeGates ?? []).map((gate) => {
+    const minimumScore = gate.minimumScore ?? 4;
+    const values = gate.criterionIds.map((criterionId) => scores[criterionId]);
+    const passed = values.some((value) => isScoreKnown(value) && Number(value) >= minimumScore);
+    const allEvaluated = values.every((value) => isScoreKnown(value));
+
+    return {
+      gate,
+      failed: !passed && allEvaluated,
+      unknown: !passed && !allEvaluated,
+    };
+  });
+  const failedAlternativeGates = alternativeGateStates.filter((state) => state.failed);
+  const unknownAlternativeGates = alternativeGateStates.filter((state) => state.unknown);
 
   const failedLogistics = role.logistics.filter(
     (check) => check.rejectIfFalse && logistics[check.id] === false,
@@ -60,15 +78,19 @@ export function evaluateCandidate(
   const reasons: string[] = [];
   let decision: EvaluationResult["decision"] = "Hold";
 
-  if (failedGateCriteria.length || failedLogistics.length) {
+  if (failedGateCriteria.length || failedAlternativeGates.length || failedLogistics.length) {
     decision = "Reject";
     failedGateCriteria.forEach((criterion) =>
       reasons.push(`${criterion.label} is below its required hiring bar.`),
     );
+    failedAlternativeGates.forEach(({ gate }) =>
+      reasons.push(`${gate.label} did not meet the required bar through either accepted path.`),
+    );
     failedLogistics.forEach((check) => reasons.push(`${check.label} does not meet the role requirement.`));
-  } else if (unknownGateCriteria.length || unknownLogistics.length) {
+  } else if (unknownGateCriteria.length || unknownAlternativeGates.length || unknownLogistics.length) {
     decision = "Hold";
     unknownGateCriteria.forEach((criterion) => reasons.push(`${criterion.label} still needs validation.`));
+    unknownAlternativeGates.forEach(({ gate }) => reasons.push(`${gate.label} still needs validation.`));
     unknownLogistics.forEach((check) => reasons.push(`${check.label} is still unknown.`));
   } else if (
     technical.score === null ||
@@ -95,8 +117,16 @@ export function evaluateCandidate(
     operatingCoverage: operating.coverage,
     decision,
     reasons,
-    failedGates: [...failedGateCriteria.map((criterion) => criterion.id), ...failedLogistics.map((check) => check.id)],
-    unknownGates: [...unknownGateCriteria.map((criterion) => criterion.id), ...unknownLogistics.map((check) => check.id)],
+    failedGates: [
+      ...failedGateCriteria.map((criterion) => criterion.id),
+      ...failedAlternativeGates.map(({ gate }) => gate.id),
+      ...failedLogistics.map((check) => check.id),
+    ],
+    unknownGates: [
+      ...unknownGateCriteria.map((criterion) => criterion.id),
+      ...unknownAlternativeGates.map(({ gate }) => gate.id),
+      ...unknownLogistics.map((check) => check.id),
+    ],
   };
 }
 

@@ -219,17 +219,18 @@ export const roles: RoleDefinition[] = [
         area: "technical",
         weight: 30,
         priority: "critical",
-        hardGate: true,
-        minimumScore: 4,
+        gateLabel: "Combined gate · AI or RCM",
         question:
           "Tell me about the most interesting production system you've built using LLMs or AI. What did it actually do?",
         followUps: [
+          "How long have you worked hands-on with production AI or agentic systems?",
           "What part did you personally build?",
           "Which models did you use and why?",
           "Did you build an actual agent or agentic workflow?",
           "How did you evaluate and monitor it?",
         ],
         strongSignals: [
+          "1+ year of hands-on production AI / agents",
           "Production LLM systems",
           "Agents, tool calling or RAG",
           "Evaluation and observability",
@@ -270,17 +271,22 @@ export const roles: RoleDefinition[] = [
       },
       {
         id: "casa-healthcare-domain",
-        label: "Healthcare / RCM or exceptional transferable domain depth",
+        label: "Healthcare / RCM workflow depth",
         area: "technical",
         weight: 18,
         priority: "critical",
-        hardGate: true,
-        minimumScore: 4,
-        question: "Tell me about your experience building software for healthcare or an equally complex regulated workflow.",
+        gateLabel: "Combined gate · AI or RCM",
+        question: "Tell me about your hands-on experience building software close to real healthcare operations or RCM workflows.",
         followUps: [
           "What workflow were you actually solving?",
-          "Did you work with billing, claims, prior authorization, EMRs, benefits verification or medical coding?",
+          "Did you work with billing, claims, prior authorization, EMRs/EHRs, benefits verification or medical coding?",
+          "How close were you to the actual operational workflow?",
           "What did you personally build?",
+        ],
+        strongSignals: [
+          "Meaningful hands-on billing / RCM application experience",
+          "Claims, prior authorization, medical coding or EMR/EHR workflows",
+          "Can explain the healthcare operation, not just the software layer",
         ],
       },
       {
@@ -361,6 +367,14 @@ export const roles: RoleDefinition[] = [
           "What makes you interested in joining a very early-stage company at the intersection of AI and healthcare?",
       },
     ],
+    alternativeGates: [
+      {
+        id: "casa-ai-or-rcm",
+        label: "Production AI / agents or meaningful healthcare RCM evidence",
+        criterionIds: ["casa-production-ai", "casa-healthcare-domain"],
+        minimumScore: 4,
+      },
+    ],
     logistics: [
       {
         id: "interestConfirmed",
@@ -368,6 +382,18 @@ export const roles: RoleDefinition[] = [
         type: "boolean",
         requiredForPresent: true,
         rejectIfFalse: true,
+      },
+      {
+        id: "usLocationFit",
+        label: "U.S. location / work setup fit (confirm)",
+        type: "boolean",
+        requiredForPresent: false,
+      },
+      {
+        id: "futureNycHybrid",
+        label: "Open to future NYC hybrid setup (confirm)",
+        type: "boolean",
+        requiredForPresent: false,
       },
       {
         id: "compensation",
@@ -402,11 +428,13 @@ export const roles: RoleDefinition[] = [
         minimumScore: 4,
         question: "Tell me about a project where Django was a core part of the backend.",
         followUps: [
-          "How many years have you worked with Python?",
-          "How much of your recent experience has been with Django?",
+          "How many years have you worked specifically with Django?",
+          "When did you last use Django in production?",
+          "How much of your current or recent work is Django/Python?",
           "Have you worked with Django REST Framework or Django Ninja?",
           "How do you typically structure APIs in Django?",
         ],
+        strongSignals: ["Deep and recent Django production ownership"],
         redFlags: ["Senior engineer with only limited or outdated Django experience"],
       },
       {
@@ -529,8 +557,22 @@ export const roles: RoleDefinition[] = [
         rejectIfFalse: true,
       },
       {
-        id: "usTimezoneOverlap",
-        label: "Comfortable with U.S. timezone overlap",
+        id: "djangoYearsConfirmed",
+        label: "More than 4 years of active Django experience confirmed",
+        type: "boolean",
+        requiredForPresent: true,
+        rejectIfFalse: true,
+      },
+      {
+        id: "djangoRecent",
+        label: "Recent Django / Python production use confirmed",
+        type: "boolean",
+        requiredForPresent: true,
+        rejectIfFalse: true,
+      },
+      {
+        id: "englishB2C1",
+        label: "Conversational English sufficient for B2/C1 target",
         type: "boolean",
         requiredForPresent: true,
         rejectIfFalse: true,
