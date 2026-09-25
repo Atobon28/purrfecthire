@@ -11,10 +11,18 @@ export type Criterion = {
   priority: Priority;
   hardGate?: boolean;
   minimumScore?: 1 | 2 | 3 | 4 | 5;
+  gateLabel?: string;
   question: string;
   followUps?: string[];
   strongSignals?: string[];
   redFlags?: string[];
+};
+
+export type AlternativeGate = {
+  id: string;
+  label: string;
+  criterionIds: string[];
+  minimumScore?: 1 | 2 | 3 | 4 | 5;
 };
 
 export type LogisticCheck = {
@@ -34,6 +42,7 @@ export type RoleDefinition = {
   technical: Criterion[];
   operating: Criterion[];
   logistics: LogisticCheck[];
+  alternativeGates?: AlternativeGate[];
 };
 
 export type Candidate = {
