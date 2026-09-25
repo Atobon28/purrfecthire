@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronRight, ExternalLink, Plus, RotateCcw } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronRight, ExternalLink, LoaderCircle, Plus, RotateCcw } from "lucide-react";
 import { evaluateCandidate } from "@/lib/scoring";
 import { getRole, roles } from "@/lib/scorecards";
 import type { Criterion, Score } from "@/lib/types";
@@ -9,6 +9,7 @@ import styles from "./evaluation-workspace.module.css";
 
 type SavedEvaluation = {
   id: string;
+  candidateId?: string;
   candidateName: string;
   roleSlug: string;
   linkedin?: string;
@@ -23,7 +24,7 @@ type SavedEvaluation = {
   updatedAt: string;
 };
 
-const STORAGE_KEY = "purrfecthire:evaluations:v1";
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 function emptyScores(roleSlug: string) {
   const role = getRole(roleSlug);
@@ -96,10 +97,28 @@ function CriterionCard({ criterion, value, onChange }: { criterion: Criterion; v
   );
 }
 
+async function persistEvaluation(evaluation: SavedEvaluation) {
+  const response = await fetch(`/api/evaluations/${evaluation.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      scores: evaluation.scores,
+      logistics: evaluation.logistics,
+      notes: evaluation.notes,
+      completed: evaluation.completed,
+    }),
+  });
+
+  if (!response.ok) throw new Error("Save failed");
+}
+
 export function EvaluationWorkspace() {
   const [evaluations, setEvaluations] = useState<SavedEvaluation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [creating, setCreating] = useState(false);
   const [candidateName, setCandidateName] = useState("");
   const [roleSlug, setRoleSlug] = useState(roles[0]?.slug ?? "");
   const [linkedin, setLinkedin] = useState("");
@@ -107,23 +126,32 @@ export function EvaluationWorkspace() {
   const [currentRole, setCurrentRole] = useState("");
   const [currentCompany, setCurrentCompany] = useState("");
   const [location, setLocation] = useState("");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedOnce = useRef(false);
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
+    let cancelled = false;
+
+    async function loadEvaluations() {
       try {
-        setEvaluations(JSON.parse(saved) as SavedEvaluation[]);
+        const response = await fetch("/api/evaluations", { cache: "no-store" });
+        if (!response.ok) throw new Error("Load failed");
+        const data = (await response.json()) as { evaluations?: SavedEvaluation[] };
+        if (!cancelled) {
+          setEvaluations(data.evaluations ?? []);
+          setLoadError(null);
+          loadedOnce.current = true;
+        }
       } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
+        if (!cancelled) setLoadError("No pudimos conectar con la base de datos. Revisa la configuración de Supabase.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }
-    setHydrated(true);
-  }, []);
 
-  useEffect(() => {
-    if (!hydrated) return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(evaluations));
-  }, [evaluations, hydrated]);
+    loadEvaluations();
+    return () => { cancelled = true; };
+  }, []);
 
   const active = evaluations.find((item) => item.id === activeId) ?? null;
   const activeRole = active ? getRole(active.roleSlug) : null;
@@ -132,32 +160,69 @@ export function EvaluationWorkspace() {
     return evaluateCandidate(activeRole, active.scores, active.logistics);
   }, [active, activeRole]);
 
-  function startNewEvaluation() {
-    if (!candidateName.trim() || !roleSlug) return;
-    const now = new Date().toISOString();
-    const newEvaluation: SavedEvaluation = {
-      id: crypto.randomUUID(),
-      candidateName: candidateName.trim(),
-      roleSlug,
-      linkedin: linkedin.trim() || undefined,
-      currentRole: currentRole.trim() || undefined,
-      currentCompany: currentCompany.trim() || undefined,
-      location: location.trim() || undefined,
-      scores: emptyScores(roleSlug),
-      logistics: emptyLogistics(roleSlug),
-      notes: "",
-      completed: false,
-      createdAt: now,
-      updatedAt: now,
+  useEffect(() => {
+    if (!loadedOnce.current || !active) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+
+    setSaveState("saving");
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await persistEvaluation(active);
+        setSaveState("saved");
+      } catch {
+        setSaveState("error");
+      }
+    }, 650);
+
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-    setEvaluations((current) => [newEvaluation, ...current]);
-    setActiveId(newEvaluation.id);
-    setCandidateName("");
-    setLinkedin("");
-    setCurrentRole("");
-    setCurrentCompany("");
-    setLocation("");
-    setShowExtra(false);
+  }, [active]);
+
+  async function startNewEvaluation() {
+    if (!candidateName.trim() || !roleSlug || creating) return;
+    setCreating(true);
+    setLoadError(null);
+
+    const scores = emptyScores(roleSlug);
+    const logistics = emptyLogistics(roleSlug);
+
+    try {
+      const response = await fetch("/api/evaluations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          candidateName: candidateName.trim(),
+          roleSlug,
+          linkedin: linkedin.trim() || undefined,
+          currentRole: currentRole.trim() || undefined,
+          currentCompany: currentCompany.trim() || undefined,
+          location: location.trim() || undefined,
+          scores,
+          logistics,
+          notes: "",
+          completed: false,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Create failed");
+      const data = (await response.json()) as { evaluation: SavedEvaluation };
+      const newEvaluation = data.evaluation;
+
+      setEvaluations((current) => [newEvaluation, ...current.filter((item) => item.id !== newEvaluation.id)]);
+      setActiveId(newEvaluation.id);
+      setCandidateName("");
+      setLinkedin("");
+      setCurrentRole("");
+      setCurrentCompany("");
+      setLocation("");
+      setShowExtra(false);
+      setSaveState("saved");
+    } catch {
+      setLoadError("No se pudo crear la evaluación en Supabase. Revisa la conexión antes de continuar.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   function updateActive(updater: (current: SavedEvaluation) => SavedEvaluation) {
@@ -177,8 +242,17 @@ export function EvaluationWorkspace() {
     }));
   }
 
-  function finishEvaluation() {
-    updateActive((current) => ({ ...current, completed: true, updatedAt: new Date().toISOString() }));
+  async function finishEvaluation() {
+    if (!active) return;
+    const next = { ...active, completed: true, updatedAt: new Date().toISOString() };
+    setEvaluations((current) => current.map((item) => item.id === active.id ? next : item));
+    setSaveState("saving");
+    try {
+      await persistEvaluation(next);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
   }
 
   const evaluatedCount = activeRole && active
@@ -201,7 +275,8 @@ export function EvaluationWorkspace() {
         <div className={styles.sidebarSection}>
           <div className={styles.sidebarHeading}>Evaluaciones</div>
           <div className={styles.historyList}>
-            {evaluations.length === 0 ? <p className={styles.emptyHistory}>Todavía no hay evaluaciones.</p> : null}
+            {loading ? <p className={styles.emptyHistory}>Cargando evaluaciones…</p> : null}
+            {!loading && evaluations.length === 0 ? <p className={styles.emptyHistory}>Todavía no hay evaluaciones.</p> : null}
             {evaluations.map((evaluation) => {
               const role = getRole(evaluation.roleSlug);
               if (!role) return null;
@@ -239,6 +314,8 @@ export function EvaluationWorkspace() {
               <h1>Empieza la entrevista.</h1>
               <p>Selecciona la vacante y crea la evaluación del candidato. Nada más.</p>
 
+              {loadError ? <p style={{ margin: "14px 0", color: "#8a4141", fontSize: 12 }}>{loadError}</p> : null}
+
               <div className={styles.formGrid}>
                 <label className={styles.field}>
                   <span>Candidato *</span>
@@ -268,8 +345,9 @@ export function EvaluationWorkspace() {
                 </div>
               ) : null}
 
-              <button type="button" className={styles.primaryButton} onClick={startNewEvaluation} disabled={!candidateName.trim()}>
-                Iniciar evaluación <ChevronRight size={16} />
+              <button type="button" className={styles.primaryButton} onClick={startNewEvaluation} disabled={!candidateName.trim() || creating || Boolean(loadError)}>
+                {creating ? <LoaderCircle size={16} className={styles.spin} /> : null}
+                {creating ? "Creando…" : "Iniciar evaluación"} {!creating ? <ChevronRight size={16} /> : null}
               </button>
             </div>
           </div>
@@ -282,6 +360,9 @@ export function EvaluationWorkspace() {
                 <p>{[active.currentRole, active.currentCompany, active.location].filter(Boolean).join(" · ") || "Evaluación de entrevista"}</p>
               </div>
               <div className={styles.headerActions}>
+                <span style={{ fontSize: 11, color: saveState === "error" ? "#8a4141" : "#777771" }}>
+                  {saveState === "saving" ? "Guardando…" : saveState === "error" ? "Error al guardar" : "Guardado en Supabase"}
+                </span>
                 {active.linkedin ? <a href={active.linkedin.startsWith("http") ? active.linkedin : `https://${active.linkedin}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}>LinkedIn <ExternalLink size={14} /></a> : null}
                 <button type="button" className={styles.iconButton} onClick={resetActive} title="Reiniciar evaluación"><RotateCcw size={15} /></button>
               </div>
@@ -352,9 +433,9 @@ export function EvaluationWorkspace() {
             </section>
 
             <div className={styles.finishBar}>
-              <div><strong>{active.completed ? "Evaluación finalizada" : "Evaluación en curso"}</strong><span>Se guarda automáticamente en este navegador.</span></div>
-              <button type="button" className={styles.primaryButton} onClick={finishEvaluation}>
-                <Check size={16} /> {active.completed ? "Guardar cambios" : "Finalizar evaluación"}
+              <div><strong>{active.completed ? "Evaluación finalizada" : "Evaluación en curso"}</strong><span>{saveState === "error" ? "No se pudo guardar el último cambio." : "Se guarda automáticamente en la base de datos."}</span></div>
+              <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>
+                {saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Guardar cambios" : "Finalizar evaluación"}
               </button>
             </div>
           </div>
