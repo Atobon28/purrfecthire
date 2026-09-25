@@ -24,12 +24,13 @@ export default function HomePage() {
             <span className="eyebrow">Active searches</span>
             <h2>Roles</h2>
           </div>
+          <Link href="/roles" className="muted-copy">View all roles →</Link>
         </div>
         <div className="role-grid">
           {roles.map((role) => {
             const candidateCount = candidates.filter((candidate) => candidate.roleSlug === role.slug).length;
             return (
-              <div className="role-card" key={role.slug}>
+              <Link href={`/roles/${role.slug}`} className="role-card" key={role.slug}>
                 <div>
                   <span className="role-client">{role.client}</span>
                   <h3>{role.role}</h3>
@@ -37,9 +38,9 @@ export default function HomePage() {
                 </div>
                 <div className="role-card-footer">
                   <span>{candidateCount} candidate{candidateCount === 1 ? "" : "s"}</span>
-                  <span>{role.technical.length + role.operating.length} scored criteria</span>
+                  <span>{role.technical.length + role.operating.length} scored criteria →</span>
                 </div>
-              </div>
+              </Link>
             );
           })}
         </div>
