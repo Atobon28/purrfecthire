@@ -141,7 +141,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
       <div className={styles.toolbar}><PrintButton hasPractical={isOptery} /></div>
       <article className={styles.sheet}>
         <header className={styles.top}>
-          <div className={styles.brand}><span className={styles.logo}>P</span>PurrfectHire</div>
+          <div className={styles.brand}><img className={styles.logo} src="/purrfecthire-logo.png" alt="" width={30} height={30} />PurrfectHire</div>
           <span className={styles.eyebrow}>Candidate presentation · confidential</span>
         </header>
 
