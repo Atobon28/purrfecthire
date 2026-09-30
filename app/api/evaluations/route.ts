@@ -16,7 +16,10 @@ type EvaluationPayload = {
   scores?: Record<string, Score>;
   logistics?: Record<string, string | boolean | null>;
   evidence?: Record<string, string>;
+  practicalScores?: Record<string, Score>;
+  practicalEvidence?: Record<string, string>;
   notes?: string;
+  screeningCompleted?: boolean;
   completed?: boolean;
 };
 
@@ -33,7 +36,10 @@ function mapEvaluation(candidate: any, assessment: any) {
     scores: assessment.scores ?? {},
     logistics: assessment.logistics ?? {},
     evidence: assessment.evidence ?? {},
+    practicalScores: assessment.practical_scores ?? {},
+    practicalEvidence: assessment.practical_evidence ?? {},
     notes: assessment.recruiter_notes ?? "",
+    screeningCompleted: Boolean(assessment.screening_completed),
     completed: Boolean(assessment.completed),
     createdAt: assessment.created_at,
     updatedAt: assessment.updated_at,
@@ -45,7 +51,7 @@ export async function GET() {
     const supabase = getSupabaseAdmin();
     const { data, error } = await supabase
       .from("candidates")
-      .select("id,name,role_slug,linkedin_url,current_role,current_company,location,assessments(id,scores,logistics,evidence,recruiter_notes,completed,created_at,updated_at)");
+      .select("id,name,role_slug,linkedin_url,current_role,current_company,location,assessments(id,scores,logistics,evidence,practical_scores,practical_evidence,recruiter_notes,screening_completed,completed,created_at,updated_at)");
 
     if (error) throw error;
 
@@ -58,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json(
       { evaluations, refreshedAt: new Date().toISOString() },
-      { headers: { "Cache-Control": "no-store, max-age=0" } },
+      { headers: { "Cache-Control": "no-store, max-age=0, must-revalidate" } },
     );
   } catch (error) {
     console.error("Failed to load evaluations", error);
@@ -80,6 +86,8 @@ export async function POST(request: Request) {
     const scores = payload.scores ?? {};
     const logistics = payload.logistics ?? {};
     const evidence = payload.evidence ?? {};
+    const practicalScores = payload.practicalScores ?? {};
+    const practicalEvidence = payload.practicalEvidence ?? {};
     const result = evaluateCandidate(role, scores, logistics);
     const supabase = getSupabaseAdmin();
 
@@ -105,15 +113,18 @@ export async function POST(request: Request) {
         scores,
         logistics,
         evidence,
+        practical_scores: practicalScores,
+        practical_evidence: practicalEvidence,
         recruiter_notes: payload.notes ?? "",
         technical_score: result.technicalScore,
         operating_score: result.operatingScore,
         overall_score: result.overallScore,
         decision: result.decision,
         decision_reasons: result.reasons,
+        screening_completed: Boolean(payload.screeningCompleted),
         completed: Boolean(payload.completed),
       })
-      .select("id,scores,logistics,evidence,recruiter_notes,completed,created_at,updated_at")
+      .select("id,scores,logistics,evidence,practical_scores,practical_evidence,recruiter_notes,screening_completed,completed,created_at,updated_at")
       .single();
 
     if (assessmentError || !assessment) {

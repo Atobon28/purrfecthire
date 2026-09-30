@@ -19,19 +19,26 @@ create table if not exists public.assessments (
   candidate_id uuid not null unique references public.candidates(id) on delete cascade,
   scores jsonb not null default '{}'::jsonb,
   logistics jsonb not null default '{}'::jsonb,
+  evidence jsonb not null default '{}'::jsonb,
+  practical_scores jsonb not null default '{}'::jsonb,
+  practical_evidence jsonb not null default '{}'::jsonb,
   recruiter_notes text,
   technical_score numeric(3,2),
   operating_score numeric(3,2),
   overall_score numeric(3,2),
   decision text check (decision in ('Present', 'Hold', 'Reject')),
   decision_reasons jsonb not null default '[]'::jsonb,
+  screening_completed boolean not null default false,
   completed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
-alter table public.assessments
-  add column if not exists completed boolean not null default false;
+alter table public.assessments add column if not exists evidence jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists practical_scores jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists practical_evidence jsonb not null default '{}'::jsonb;
+alter table public.assessments add column if not exists screening_completed boolean not null default false;
+alter table public.assessments add column if not exists completed boolean not null default false;
 
 create index if not exists assessments_updated_at_idx on public.assessments(updated_at desc);
 
@@ -55,7 +62,7 @@ create trigger assessments_set_updated_at
 before update on public.assessments
 for each row execute function public.set_updated_at();
 
--- Browser-direct access stays blocked. PurrfectHire uses the service role only
--- from Next.js server routes. Never expose SUPABASE_SERVICE_ROLE_KEY to the browser.
+-- Browser-direct access stays blocked. PurrfectHire uses the server secret only
+-- from Next.js server routes. Never expose SUPABASE_SECRET_KEY or a service-role key to the browser.
 alter table public.candidates enable row level security;
 alter table public.assessments enable row level security;
