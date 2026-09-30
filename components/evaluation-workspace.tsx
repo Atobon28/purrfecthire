@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronRight, ExternalLink, LoaderCircle, Plus, RotateCcw } from "lucide-react";
+import { Check, ChevronRight, ExternalLink, FileText, LoaderCircle, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { evaluateCandidate } from "@/lib/scoring";
 import { getRole, roles } from "@/lib/scorecards";
 import type { Criterion, Score } from "@/lib/types";
@@ -18,6 +18,7 @@ type SavedEvaluation = {
   location?: string;
   scores: Record<string, Score>;
   logistics: Record<string, string | boolean | null>;
+  evidence: Record<string, string>;
   notes: string;
   completed: boolean;
   createdAt: string;
@@ -49,7 +50,19 @@ function scoreTone(score: Score) {
   return styles.scoreHigh;
 }
 
-function CriterionCard({ criterion, value, onChange }: { criterion: Criterion; value: Score; onChange: (score: Score) => void }) {
+function CriterionCard({
+  criterion,
+  value,
+  evidence,
+  onChange,
+  onEvidenceChange,
+}: {
+  criterion: Criterion;
+  value: Score;
+  evidence: string;
+  onChange: (score: Score) => void;
+  onEvidenceChange: (value: string) => void;
+}) {
   return (
     <article className={styles.criterionCard}>
       <div className={styles.criterionTopline}>
@@ -83,6 +96,15 @@ function CriterionCard({ criterion, value, onChange }: { criterion: Criterion; v
         </button>
       </div>
 
+      <label className={styles.field} style={{ marginTop: 14 }}>
+        <span>Evidencia observada · opcional, alimenta el documento final</span>
+        <input
+          value={evidence}
+          onChange={(event) => onEvidenceChange(event.target.value)}
+          placeholder="Qué hizo personalmente, resultado, escala o ejemplo concreto"
+        />
+      </label>
+
       {(criterion.followUps?.length || criterion.strongSignals?.length || criterion.redFlags?.length) ? (
         <details className={styles.details}>
           <summary>Guía para profundizar</summary>
@@ -104,6 +126,7 @@ async function persistEvaluation(evaluation: SavedEvaluation) {
     body: JSON.stringify({
       scores: evaluation.scores,
       logistics: evaluation.logistics,
+      evidence: evaluation.evidence,
       notes: evaluation.notes,
       completed: evaluation.completed,
     }),
@@ -116,6 +139,7 @@ export function EvaluationWorkspace() {
   const [evaluations, setEvaluations] = useState<SavedEvaluation[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [creating, setCreating] = useState(false);
@@ -129,28 +153,36 @@ export function EvaluationWorkspace() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const loadedOnce = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadEvaluations() {
-      try {
-        const response = await fetch("/api/evaluations", { cache: "no-store" });
-        if (!response.ok) throw new Error("Load failed");
-        const data = (await response.json()) as { evaluations?: SavedEvaluation[] };
-        if (!cancelled) {
-          setEvaluations(data.evaluations ?? []);
-          setLoadError(null);
-          loadedOnce.current = true;
+  async function refreshHistory(showSpinner = false) {
+    if (showSpinner) setRefreshing(true);
+    try {
+      const response = await fetch(`/api/evaluations?t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Load failed");
+      const data = (await response.json()) as { evaluations?: SavedEvaluation[] };
+      const normalized = (data.evaluations ?? []).map((item) => ({ ...item, evidence: item.evidence ?? {} }));
+      setEvaluations((current) => {
+        if (saveState === "saving" && activeId) {
+          const activeLocal = current.find((item) => item.id === activeId);
+          return normalized.map((item) => item.id === activeId && activeLocal ? activeLocal : item);
         }
-      } catch {
-        if (!cancelled) setLoadError("No pudimos conectar con la base de datos. Revisa la configuración de Supabase.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+        return normalized;
+      });
+      setLoadError(null);
+      loadedOnce.current = true;
+    } catch {
+      setLoadError("No pudimos cargar el historial compartido desde Supabase.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
+  }
 
-    loadEvaluations();
-    return () => { cancelled = true; };
+  useEffect(() => {
+    void refreshHistory();
+    const onFocus = () => void refreshHistory();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const active = evaluations.find((item) => item.id === activeId) ?? null;
@@ -184,9 +216,6 @@ export function EvaluationWorkspace() {
     setCreating(true);
     setLoadError(null);
 
-    const scores = emptyScores(roleSlug);
-    const logistics = emptyLogistics(roleSlug);
-
     try {
       const response = await fetch("/api/evaluations", {
         method: "POST",
@@ -198,8 +227,9 @@ export function EvaluationWorkspace() {
           currentRole: currentRole.trim() || undefined,
           currentCompany: currentCompany.trim() || undefined,
           location: location.trim() || undefined,
-          scores,
-          logistics,
+          scores: emptyScores(roleSlug),
+          logistics: emptyLogistics(roleSlug),
+          evidence: {},
           notes: "",
           completed: false,
         }),
@@ -207,8 +237,7 @@ export function EvaluationWorkspace() {
 
       if (!response.ok) throw new Error("Create failed");
       const data = (await response.json()) as { evaluation: SavedEvaluation };
-      const newEvaluation = data.evaluation;
-
+      const newEvaluation = { ...data.evaluation, evidence: data.evaluation.evidence ?? {} };
       setEvaluations((current) => [newEvaluation, ...current.filter((item) => item.id !== newEvaluation.id)]);
       setActiveId(newEvaluation.id);
       setCandidateName("");
@@ -219,7 +248,7 @@ export function EvaluationWorkspace() {
       setShowExtra(false);
       setSaveState("saved");
     } catch {
-      setLoadError("No se pudo crear la evaluación en Supabase. Revisa la conexión antes de continuar.");
+      setLoadError("No se pudo crear la evaluación en Supabase.");
     } finally {
       setCreating(false);
     }
@@ -236,6 +265,7 @@ export function EvaluationWorkspace() {
       ...current,
       scores: emptyScores(current.roleSlug),
       logistics: emptyLogistics(current.roleSlug),
+      evidence: {},
       notes: "",
       completed: false,
       updatedAt: new Date().toISOString(),
@@ -250,6 +280,7 @@ export function EvaluationWorkspace() {
     try {
       await persistEvaluation(next);
       setSaveState("saved");
+      await refreshHistory();
     } catch {
       setSaveState("error");
     }
@@ -259,6 +290,7 @@ export function EvaluationWorkspace() {
     ? [...activeRole.technical, ...activeRole.operating].filter((criterion) => active.scores[criterion.id] !== null && active.scores[criterion.id] !== undefined).length
     : 0;
   const totalCriteria = activeRole ? activeRole.technical.length + activeRole.operating.length : 0;
+  const completedCount = evaluations.filter((item) => item.completed).length;
 
   return (
     <div className={styles.workspace}>
@@ -273,9 +305,14 @@ export function EvaluationWorkspace() {
         </button>
 
         <div className={styles.sidebarSection}>
-          <div className={styles.sidebarHeading}>Evaluaciones</div>
+          <div className={styles.sidebarHeading} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Evaluaciones · {completedCount} finalizadas</span>
+            <button type="button" onClick={() => void refreshHistory(true)} title="Actualizar historial compartido" style={{ border: 0, background: "transparent", padding: 0, cursor: "pointer", color: "inherit" }}>
+              <RefreshCw size={12} className={refreshing ? styles.spin : undefined} />
+            </button>
+          </div>
           <div className={styles.historyList}>
-            {loading ? <p className={styles.emptyHistory}>Cargando evaluaciones…</p> : null}
+            {loading ? <p className={styles.emptyHistory}>Cargando historial compartido…</p> : null}
             {!loading && evaluations.length === 0 ? <p className={styles.emptyHistory}>Todavía no hay evaluaciones.</p> : null}
             {evaluations.map((evaluation) => {
               const role = getRole(evaluation.roleSlug);
@@ -292,7 +329,7 @@ export function EvaluationWorkspace() {
                     <strong>{evaluation.candidateName}</strong>
                     <ChevronRight size={14} />
                   </div>
-                  <span>{role.role}</span>
+                  <span>{role.client} · {role.role}</span>
                   <div className={styles.historyFooter}>
                     <span>{formatDate(evaluation.updatedAt)}</span>
                     <span className={`${styles.statusDot} ${styles[`status${evaluation.completed ? result.decision : "Draft"}`]}`}>
@@ -312,7 +349,7 @@ export function EvaluationWorkspace() {
             <div className={styles.startCard}>
               <span className={styles.eyebrow}>Nueva evaluación</span>
               <h1>Empieza la entrevista.</h1>
-              <p>Selecciona la vacante y crea la evaluación del candidato. Nada más.</p>
+              <p>Selecciona la vacante y crea la evaluación del candidato. El historial lateral es compartido para todos los que usan esta misma plataforma.</p>
 
               {loadError ? <p style={{ margin: "14px 0", color: "#8a4141", fontSize: 12 }}>{loadError}</p> : null}
 
@@ -361,8 +398,9 @@ export function EvaluationWorkspace() {
               </div>
               <div className={styles.headerActions}>
                 <span style={{ fontSize: 11, color: saveState === "error" ? "#8a4141" : "#777771" }}>
-                  {saveState === "saving" ? "Guardando…" : saveState === "error" ? "Error al guardar" : "Guardado en Supabase"}
+                  {saveState === "saving" ? "Guardando…" : saveState === "error" ? "Error al guardar" : "Guardado para todos"}
                 </span>
+                {active.completed ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> Documento final</a> : null}
                 {active.linkedin ? <a href={active.linkedin.startsWith("http") ? active.linkedin : `https://${active.linkedin}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}>LinkedIn <ExternalLink size={14} /></a> : null}
                 <button type="button" className={styles.iconButton} onClick={resetActive} title="Reiniciar evaluación"><RotateCcw size={15} /></button>
               </div>
@@ -384,15 +422,20 @@ export function EvaluationWorkspace() {
               </div>
             </section>
 
-            <div className={styles.scaleLegend}>
-              <strong>Escala</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span>
-            </div>
+            <div className={styles.scaleLegend}><strong>Escala</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
             <section className={styles.section}>
               <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>50% del resultado</span><h2>Técnico</h2></div><span>{activeResult.technicalCoverage}% evaluado</span></div>
               <div className={styles.criteriaStack}>
                 {activeRole.technical.map((criterion) => (
-                  <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} onChange={(score) => updateActive((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score }, completed: false, updatedAt: new Date().toISOString() }))} />
+                  <CriterionCard
+                    key={criterion.id}
+                    criterion={criterion}
+                    value={active.scores[criterion.id] ?? null}
+                    evidence={active.evidence[criterion.id] ?? ""}
+                    onChange={(score) => updateActive((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score }, completed: false, updatedAt: new Date().toISOString() }))}
+                    onEvidenceChange={(value) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value }, completed: false, updatedAt: new Date().toISOString() }))}
+                  />
                 ))}
               </div>
             </section>
@@ -402,7 +445,14 @@ export function EvaluationWorkspace() {
               <p className={styles.sectionHelper}>Solo comportamientos observables relevantes al cargo: ownership, autonomía, comunicación y colaboración.</p>
               <div className={styles.criteriaStack}>
                 {activeRole.operating.map((criterion) => (
-                  <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} onChange={(score) => updateActive((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score }, completed: false, updatedAt: new Date().toISOString() }))} />
+                  <CriterionCard
+                    key={criterion.id}
+                    criterion={criterion}
+                    value={active.scores[criterion.id] ?? null}
+                    evidence={active.evidence[criterion.id] ?? ""}
+                    onChange={(score) => updateActive((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score }, completed: false, updatedAt: new Date().toISOString() }))}
+                    onEvidenceChange={(value) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value }, completed: false, updatedAt: new Date().toISOString() }))}
+                  />
                 ))}
               </div>
             </section>
@@ -428,15 +478,27 @@ export function EvaluationWorkspace() {
             </section>
 
             <section className={styles.section}>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Evidencia final</span><h2>Qué quedó probado</h2></div></div>
+              <div className={styles.logisticsGrid}>
+                <label className={styles.field}><span>Qué resolvió / demostró</span><input value={active.evidence.__solved ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __solved: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} placeholder="Ejemplos concretos que sí quedaron demostrados" /></label>
+                <label className={styles.field}><span>Dónde necesitó pistas o apoyo</span><input value={active.evidence.__hints ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __hints: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} placeholder="Pistas, aclaraciones o apoyo necesario" /></label>
+                <label className={styles.field}><span>Qué no pudimos validar</span><input value={active.evidence.__untested ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __untested: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} placeholder="Temas que quedaron pendientes" /></label>
+              </div>
+            </section>
+
+            <section className={styles.section}>
               <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Opcional</span><h2>Notas</h2></div></div>
-              <textarea className={styles.notes} rows={5} value={active.notes} placeholder="Contexto útil de la entrevista. No es obligatorio para puntuar." onChange={(event) => updateActive((current) => ({ ...current, notes: event.target.value, completed: false, updatedAt: new Date().toISOString() }))} />
+              <textarea className={styles.notes} rows={5} value={active.notes} placeholder="Contexto útil de la entrevista. También aparecerá en el documento final." onChange={(event) => updateActive((current) => ({ ...current, notes: event.target.value, completed: false, updatedAt: new Date().toISOString() }))} />
             </section>
 
             <div className={styles.finishBar}>
-              <div><strong>{active.completed ? "Evaluación finalizada" : "Evaluación en curso"}</strong><span>{saveState === "error" ? "No se pudo guardar el último cambio." : "Se guarda automáticamente en la base de datos."}</span></div>
-              <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>
-                {saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Guardar cambios" : "Finalizar evaluación"}
-              </button>
+              <div><strong>{active.completed ? "Evaluación finalizada" : "Evaluación en curso"}</strong><span>{saveState === "error" ? "No se pudo guardar el último cambio." : "Se guarda en Supabase y queda visible en el historial compartido."}</span></div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {active.completed ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> Ver documento</a> : null}
+                <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>
+                  {saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Guardar cambios" : "Finalizar evaluación"}
+                </button>
+              </div>
             </div>
           </div>
         )}
