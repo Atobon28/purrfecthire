@@ -114,18 +114,6 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
         <div className={styles.summary}><b>20-second read</b>{summary}</div>
 
-        {isOptery ? <section className={styles.evidence}>
-          <h2 style={{ fontSize: 15, marginBottom: 6 }}>Practical assessment breakdown</h2>
-          <p className={styles.small} style={{ marginBottom: 14 }}>Detailed live-assessment results are shown first so the practical evidence is easy to scan at a glance.</p>
-          <div className={styles.fit}>
-            <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
-            {OPTERY_PRACTICAL.map((criterion) => {
-              const score = practicalScores[criterion.id];
-              return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Not evaluated" : `${score}/5`}</span></div>;
-            })}
-          </div>
-        </section> : null}
-
         <div className={styles.grid}>
           <section className={styles.section}>
             <h2>Why this candidate fits</h2>
@@ -141,21 +129,39 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           </section>
 
           <section className={styles.section}>
-            <h2>Theoretical vs practical evaluation</h2>
-            <div className={styles.evidenceGrid}>
-              <div className={styles.evidenceCard}>
-                <b>Theoretical / interview screen · {theoryStatus}</b>
-                <p><strong>What it measures:</strong> role-specific technical depth, ownership, judgment, communication, autonomy, motivation, and candidate conditions captured during the interview.</p>
-                <p><strong>Result:</strong> {theoreticalResult}</p>
+            <h2>Practical assessment breakdown</h2>
+            {isOptery ? (
+              <div className={styles.fit}>
+                <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
+                {OPTERY_PRACTICAL.map((criterion) => {
+                  const score = practicalScores[criterion.id];
+                  return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Not evaluated" : `${score}/5`}</span></div>;
+                })}
               </div>
+            ) : (
               <div className={styles.evidenceCard}>
-                <b>Practical / live assessment · {practicalStatus}</b>
-                <p><strong>What it measures:</strong> {isOptery ? "ability to start an unfamiliar project quickly, backend/system design, data integrity, distributed-systems reliability, and production debugging/performance through live evidence." : "No separate practical stage is currently defined in this scorecard."}</p>
-                <p><strong>Result:</strong> {practicalResult}</p>
+                <b>Not configured</b>
+                <p>No separate practical stage is currently defined in this scorecard.</p>
               </div>
-            </div>
+            )}
           </section>
         </div>
+
+        <section className={styles.evidence}>
+          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Theoretical vs practical evaluation</h2>
+          <div className={styles.evidenceGrid}>
+            <div className={styles.evidenceCard}>
+              <b>Theoretical / interview screen · {theoryStatus}</b>
+              <p><strong>What it measures:</strong> role-specific technical depth, ownership, judgment, communication, autonomy, motivation, and candidate conditions captured during the interview.</p>
+              <p><strong>Result:</strong> {theoreticalResult}</p>
+            </div>
+            <div className={styles.evidenceCard}>
+              <b>Practical / live assessment · {practicalStatus}</b>
+              <p><strong>What it measures:</strong> {isOptery ? "ability to start an unfamiliar project quickly, backend/system design, data integrity, distributed-systems reliability, and production debugging/performance through live evidence." : "No separate practical stage is currently defined in this scorecard."}</p>
+              <p><strong>Result:</strong> {practicalResult}</p>
+            </div>
+          </div>
+        </section>
 
         <section className={styles.evidence}>
           <h2 style={{ fontSize: 15, marginBottom: 14 }}>Evaluation evidence</h2>
