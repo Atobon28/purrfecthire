@@ -77,11 +77,8 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
     : "No separate live technical assessment is configured for this role.";
 
   const finalEvidence = evidence.__solved?.trim() || "";
-  const recordedPracticalEvidence = isOptery
-    ? OPTERY_PRACTICAL.filter((criterion) => practicalEvidence[criterion.id]?.trim())
-    : [];
-
-  const additionalPracticalEvidence = [
+  const finalEvidenceDetails = [
+    { label: "What they solved / demonstrated", value: finalEvidence },
     { label: "Where they needed hints or support", value: evidence.__hints?.trim() },
     { label: "What we could not validate", value: evidence.__untested?.trim() },
   ].filter((item): item is { label: string; value: string } => Boolean(item.value));
@@ -147,18 +144,19 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
           <div className={styles.assessmentGrid}>
             <div>
-              {finalEvidence ? (
-                <div className={styles.evidenceCard}>
-                  <b>Final evidence · What was demonstrated</b>
-                  <p><strong>What they solved / demonstrated:</strong> {finalEvidence}</p>
-                </div>
-              ) : (
-                <div className={styles.evidenceCard}>
-                  <b>Final evidence</b>
-                  <p>No final demonstrated-evidence note was recorded.</p>
-                </div>
-              )}
-            </div>
+              <div className={styles.evidenceGrid}>
+                {finalEvidenceDetails.length ? finalEvidenceDetails.map((item) => (
+                  <div className={styles.evidenceCard} key={item.label}>
+                    <b>{item.label}</b>
+                    <p>{item.value}</p>
+                  </div>
+                )) : (
+                  <div className={styles.evidenceCard}>
+                    <b>Final evidence</b>
+                    <p>No final demonstrated-evidence note was recorded.</p>
+                  </div>
+                )}
+              </div>            </div>
 
             <div>
               <h3 className={styles.miniHeading}>Technical assessment result</h3>
@@ -180,21 +178,6 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             </div>
           </div>
         </section>
-
-        {isOptery && (recordedPracticalEvidence.length || additionalPracticalEvidence.length) ? (
-          <section className={styles.evidence} data-pdf-section="practical">
-            <h2 style={{ fontSize: 15, marginBottom: 14 }}>Technical assessment evidence</h2>
-            <div className={styles.evidenceGrid}>
-              {recordedPracticalEvidence.map((criterion) => (
-                <div className={styles.evidenceCard} key={criterion.id}>
-                  <b>{criterion.label}{practicalScores[criterion.id] !== null && practicalScores[criterion.id] !== undefined ? ` · ${practicalScores[criterion.id]}/5` : ""}</b>
-                  <p>{practicalEvidence[criterion.id]?.trim()}</p>
-                </div>
-              ))}
-              {additionalPracticalEvidence.map((item) => <div className={styles.evidenceCard} key={item.label}><b>{item.label}</b><p>{item.value}</p></div>)}
-            </div>
-          </section>
-        ) : null}
 
         <section className={styles.evidence} data-pdf-section="theory">
           <div className={styles.eyebrow}>Theoretical screen · experience-based</div>
