@@ -65,6 +65,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
   const practicalStrong = practicalScored.filter((criterion) => Number(practicalScores[criterion.id]) >= 4);
   const practicalStatus = !isOptery ? "Not configured" : practicalOutcome === "Not evaluated" ? "Pending" : practicalOutcome;
   const projectStart = practicalEvidence.__projectStart || "Not evaluated";
+  const practicalEvidenceItems = isOptery ? OPTERY_PRACTICAL.map((criterion) => ({ id: criterion.id, label: criterion.label, score: practicalScores[criterion.id], evidence: practicalEvidence[criterion.id]?.trim() || "" })).filter((item) => item.score !== null && item.score !== undefined || Boolean(item.evidence)) : [];
 
   const assessmentSummary = isOptery
     ? [
@@ -177,6 +178,20 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
               )}
             </div>
           </div>
+
+          <div className={styles.practicalBreakdown}>
+            <div className={styles.eyebrow}>Practical assessment breakdown · observable evidence</div>
+            {practicalEvidenceItems.length ? (
+              <div className={styles.evidenceGrid}>
+                {practicalEvidenceItems.map((item) => (
+                  <div className={styles.evidenceCard} key={item.id}>
+                    <b>Practical · {item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
+                    {item.evidence ? <p>{item.evidence}</p> : <p>No dimension-specific evidence was recorded.</p>}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </section>
 
         <section className={styles.evidence} data-pdf-section="theory">
@@ -186,7 +201,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             <div className={styles.evidenceGrid}>
               {technicalScreeningItems.map((item) => (
                 <div className={styles.evidenceCard} key={item.id}>
-                  <b>{item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
+                  <b>Theoretical · {item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
                   {item.evidence ? <p>{item.evidence}</p> : null}
                 </div>
               ))}
