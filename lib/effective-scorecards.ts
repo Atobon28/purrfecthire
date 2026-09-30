@@ -248,10 +248,12 @@ const optery: RoleDefinition = {
   ],
 };
 
-export const roles: RoleDefinition[] = baseRoles.map((role) =>
+const allRoles: RoleDefinition[] = baseRoles.map((role) =>
   role.slug === optery.slug ? optery : role,
 );
 
+export const roles: RoleDefinition[] = allRoles.filter((role) => role.slug === optery.slug);
+
 export function getRole(slug: string) {
-  return roles.find((role) => role.slug === slug);
+  return allRoles.find((role) => role.slug === slug);
 }
