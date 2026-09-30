@@ -5,6 +5,7 @@ import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { Score } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 type EvaluationPayload = {
   candidateName?: string;
@@ -49,26 +50,44 @@ function mapEvaluation(candidate: any, assessment: any) {
 export async function GET() {
   try {
     const supabase = getSupabaseAdmin();
+
+    // Assessments are the source of truth for the sidebar. Querying from the
+    // assessment side guarantees that every saved evaluation with a candidate
+    // is returned, including completed evaluations created in another browser.
     const { data, error } = await supabase
-      .from("candidates")
-      .select("id,name,role_slug,linkedin_url,current_role,current_company,location,assessments(id,scores,logistics,evidence,practical_scores,practical_evidence,recruiter_notes,screening_completed,completed,created_at,updated_at)");
+      .from("assessments")
+      .select("id,scores,logistics,evidence,practical_scores,practical_evidence,recruiter_notes,screening_completed,completed,created_at,updated_at,candidates!inner(id,name,role_slug,linkedin_url,current_role,current_company,location)")
+      .order("updated_at", { ascending: false })
+      .limit(200);
 
     if (error) throw error;
 
-    const evaluations = (data ?? [])
-      .flatMap((candidate: any) => {
-        const assessments = Array.isArray(candidate.assessments) ? candidate.assessments : [];
-        return assessments.map((assessment: any) => mapEvaluation(candidate, assessment));
-      })
-      .sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    const evaluations = (data ?? []).flatMap((assessment: any) => {
+      const candidate = Array.isArray(assessment.candidates)
+        ? assessment.candidates[0]
+        : assessment.candidates;
+      return candidate ? [mapEvaluation(candidate, assessment)] : [];
+    });
 
     return NextResponse.json(
       { evaluations, refreshedAt: new Date().toISOString() },
-      { headers: { "Cache-Control": "no-store, max-age=0, must-revalidate" } },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, max-age=0, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      },
     );
   } catch (error) {
     console.error("Failed to load evaluations", error);
-    return NextResponse.json({ error: "Evaluations could not be loaded." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Evaluations could not be loaded." },
+      {
+        status: 500,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   }
 }
 
@@ -132,7 +151,13 @@ export async function POST(request: Request) {
       throw assessmentError ?? new Error("Assessment insert failed");
     }
 
-    return NextResponse.json({ evaluation: mapEvaluation(candidate, assessment) }, { status: 201 });
+    return NextResponse.json(
+      { evaluation: mapEvaluation(candidate, assessment) },
+      {
+        status: 201,
+        headers: { "Cache-Control": "no-store" },
+      },
+    );
   } catch (error) {
     console.error("Failed to create evaluation", error);
     return NextResponse.json({ error: "The evaluation could not be created." }, { status: 500 });
