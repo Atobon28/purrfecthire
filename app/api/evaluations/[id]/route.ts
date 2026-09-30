@@ -8,7 +8,10 @@ type UpdatePayload = {
   scores?: Record<string, Score>;
   logistics?: Record<string, string | boolean | null>;
   evidence?: Record<string, string>;
+  practicalScores?: Record<string, Score>;
+  practicalEvidence?: Record<string, string>;
   notes?: string;
+  screeningCompleted?: boolean;
   completed?: boolean;
 };
 
@@ -20,7 +23,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
     const { data: assessment, error: readError } = await supabase
       .from("assessments")
-      .select("id,candidate_id,scores,logistics,evidence,recruiter_notes,completed,candidates(role_slug)")
+      .select("id,candidate_id,scores,logistics,evidence,practical_scores,practical_evidence,recruiter_notes,screening_completed,completed,candidates(role_slug)")
       .eq("id", id)
       .single();
 
@@ -41,7 +44,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const scores = payload.scores ?? ((assessment as any).scores ?? {});
     const logistics = payload.logistics ?? ((assessment as any).logistics ?? {});
     const evidence = payload.evidence ?? ((assessment as any).evidence ?? {});
+    const practicalScores = payload.practicalScores ?? ((assessment as any).practical_scores ?? {});
+    const practicalEvidence = payload.practicalEvidence ?? ((assessment as any).practical_evidence ?? {});
     const notes = payload.notes ?? ((assessment as any).recruiter_notes ?? "");
+    const screeningCompleted = payload.screeningCompleted ?? Boolean((assessment as any).screening_completed);
     const completed = payload.completed ?? Boolean((assessment as any).completed);
     const result = evaluateCandidate(role, scores, logistics);
 
@@ -51,12 +57,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         scores,
         logistics,
         evidence,
+        practical_scores: practicalScores,
+        practical_evidence: practicalEvidence,
         recruiter_notes: notes,
         technical_score: result.technicalScore,
         operating_score: result.operatingScore,
         overall_score: result.overallScore,
         decision: result.decision,
         decision_reasons: result.reasons,
+        screening_completed: screeningCompleted,
         completed,
       })
       .eq("id", id)
