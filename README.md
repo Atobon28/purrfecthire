@@ -1,10 +1,10 @@
-# PurrfectHire
+# Purrfect Hire
 
 Minimal recruiting decision workspace for structured technical interviews.
 
 ## Product goal
 
-PurrfectHire is not an interview script. It turns role-specific scorecards into a decision system with:
+Purrfect Hire is not an interview script. It turns role-specific scorecards into a decision system with:
 
 - Separate Technical and Operating / Cultural scores.
 - 50 / 50 contribution to the overall score.
