@@ -85,3 +85,52 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "The evaluation could not be saved." }, { status: 500 });
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const supabase = getSupabaseAdmin();
+
+    const { data: assessment, error: readError } = await supabase
+      .from("assessments")
+      .select("id,candidate_id")
+      .eq("id", id)
+      .single();
+
+    if (readError || !assessment) {
+      return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
+    }
+
+    const candidateId = (assessment as any).candidate_id as string | null;
+    const { error: deleteError } = await supabase
+      .from("assessments")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) throw deleteError;
+
+    if (candidateId) {
+      const { data: remaining, error: remainingError } = await supabase
+        .from("assessments")
+        .select("id")
+        .eq("candidate_id", candidateId)
+        .limit(1);
+
+      if (!remainingError && (!remaining || remaining.length === 0)) {
+        const { error: candidateDeleteError } = await supabase
+          .from("candidates")
+          .delete()
+          .eq("id", candidateId);
+
+        if (candidateDeleteError) {
+          console.error("Evaluation deleted but orphan candidate cleanup failed", candidateDeleteError);
+        }
+      }
+    }
+
+    return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Failed to delete evaluation", error);
+    return NextResponse.json({ error: "The evaluation could not be deleted." }, { status: 500 });
+  }
+}
