@@ -5,8 +5,8 @@ import { FileDown } from "lucide-react";
 type ReportMode = "theory" | "practical" | "full";
 
 const labels: Record<ReportMode, string> = {
-  theory: "Theoretical PDF",
-  practical: "Practical PDF",
+  theory: "Tech Screening PDF",
+  practical: "Tech Assessment PDF",
   full: "Full PDF",
 };
 
