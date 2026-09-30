@@ -68,7 +68,7 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Failed to load evaluations", error);
-    return NextResponse.json({ error: "No se pudieron cargar las evaluaciones." }, { status: 500 });
+    return NextResponse.json({ error: "Evaluations could not be loaded." }, { status: 500 });
   }
 }
 
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     const role = roleSlug ? getRole(roleSlug) : null;
 
     if (!candidateName || !roleSlug || !role) {
-      return NextResponse.json({ error: "Candidato y vacante son obligatorios." }, { status: 400 });
+      return NextResponse.json({ error: "Candidate and role are required." }, { status: 400 });
     }
 
     const scores = payload.scores ?? {};
@@ -135,6 +135,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ evaluation: mapEvaluation(candidate, assessment) }, { status: 201 });
   } catch (error) {
     console.error("Failed to create evaluation", error);
-    return NextResponse.json({ error: "No se pudo crear la evaluación." }, { status: 500 });
+    return NextResponse.json({ error: "The evaluation could not be created." }, { status: 500 });
   }
 }

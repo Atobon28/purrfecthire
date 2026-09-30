@@ -20,7 +20,7 @@ export function PrintButton() {
         fontWeight: 650,
       }}
     >
-      <Printer size={14} /> Guardar como PDF
+      <Printer size={14} /> Save as PDF
     </button>
   );
 }

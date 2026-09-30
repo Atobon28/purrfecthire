@@ -31,10 +31,10 @@ type SavedEvaluation = {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const OPTERY_PRACTICAL = [
-  { id: "backend-system-design", label: "Backend / System Design", prompt: "Entender el sistema desconocido y decidir qué cambiar, justificando trade-offs." },
-  { id: "data-integrity", label: "Databases / Data Integrity", prompt: "Detectar y resolver el problema de concurrencia o integridad de datos." },
-  { id: "distributed-reliability", label: "Distributed Systems / Reliability", prompt: "Manejar retries, duplicados y fallos del servicio externo sin romper el resultado de negocio." },
-  { id: "debugging-performance", label: "Production Debugging / Performance", prompt: "Investigar el endpoint lento, aislar la causa y demostrar que el cambio funciona." },
+  { id: "backend-system-design", label: "Backend / System Design", prompt: "Understand the unfamiliar system and decide what to change, explaining the trade-offs." },
+  { id: "data-integrity", label: "Databases / Data Integrity", prompt: "Identify and resolve the concurrency or data-integrity problem." },
+  { id: "distributed-reliability", label: "Distributed Systems / Reliability", prompt: "Handle retries, duplicates, and external-service failures without breaking the intended business outcome." },
+  { id: "debugging-performance", label: "Production Debugging / Performance", prompt: "Investigate the slow endpoint, isolate the cause, and demonstrate that the fix works." },
 ] as const;
 
 function emptyScores(roleSlug: string) {
@@ -55,7 +55,7 @@ function emptyPracticalScores(roleSlug: string) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("es", { day: "2-digit", month: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(value));
 }
 
 function scoreTone(score: Score) {
@@ -63,6 +63,13 @@ function scoreTone(score: Score) {
   if (score <= 2) return styles.scoreLow;
   if (score === 3) return styles.scoreMid;
   return styles.scoreHigh;
+}
+
+function normalizeProjectStart(value?: string) {
+  if (!value || value === "Sin evaluar") return "Not evaluated";
+  if (value === "Pasa") return "Pass";
+  if (value === "No pasa") return "Fail";
+  return value;
 }
 
 function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange }: {
@@ -79,7 +86,7 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
           <div className={styles.criterionMeta}>
             <span>{criterion.weight}%</span>
             <span>{criterion.priority}</span>
-            {criterion.hardGate ? <span className={styles.hardGate}>Indispensable · mín. {criterion.minimumScore ?? 4}</span> : <span>Preferencia</span>}
+            {criterion.hardGate ? <span className={styles.hardGate}>Must-have · min. {criterion.minimumScore ?? 4}</span> : <span>Preference</span>}
           </div>
           <h3>{criterion.label}</h3>
           <p className={styles.question}>{criterion.question}</p>
@@ -93,18 +100,18 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
             </button>
           ))}
         </div>
-        <button type="button" className={styles.notEvaluated} onClick={() => onChange(null)}>{value === null ? "Sin evaluar" : "Limpiar"}</button>
+        <button type="button" className={styles.notEvaluated} onClick={() => onChange(null)}>{value === null ? "Not evaluated" : "Clear"}</button>
       </div>
       <label className={styles.field} style={{ marginTop: 14 }}>
-        <span>Evidencia observada · opcional, alimenta el documento final</span>
-        <input value={evidence} onChange={(event) => onEvidenceChange(event.target.value)} placeholder="Qué hizo personalmente, resultado, escala o ejemplo concreto" />
+        <span>Observed evidence · optional, used in the final report</span>
+        <input value={evidence} onChange={(event) => onEvidenceChange(event.target.value)} placeholder="What they personally did, outcome, scale, or a concrete example" />
       </label>
       {(criterion.followUps?.length || criterion.strongSignals?.length || criterion.redFlags?.length) ? (
         <details className={styles.details}>
-          <summary>Guía para profundizar</summary>
+          <summary>Guide to go deeper</summary>
           <div className={styles.detailGrid}>
             {criterion.followUps?.length ? <div><strong>Follow-ups</strong>{criterion.followUps.map((item) => <p key={item}>{item}</p>)}</div> : null}
-            {criterion.strongSignals?.length ? <div><strong>Señales fuertes</strong>{criterion.strongSignals.map((item) => <p key={item}>{item}</p>)}</div> : null}
+            {criterion.strongSignals?.length ? <div><strong>Strong signals</strong>{criterion.strongSignals.map((item) => <p key={item}>{item}</p>)}</div> : null}
             {criterion.redFlags?.length ? <div><strong>Red flags</strong>{criterion.redFlags.map((item) => <p key={item}>{item}</p>)}</div> : null}
           </div>
         </details>
@@ -165,7 +172,6 @@ export function EvaluationWorkspace() {
 
       setEvaluations((current) => {
         const merged = new Map(normalized.map((item) => [item.id, item]));
-        // Never make an evaluation disappear from the recruiter UI because a refresh raced a save.
         current.forEach((local) => {
           if (!merged.has(local.id) || local.id === activeId) merged.set(local.id, local);
         });
@@ -174,7 +180,7 @@ export function EvaluationWorkspace() {
       setLoadError(null);
       loadedOnce.current = true;
     } catch {
-      setLoadError("No pudimos cargar el historial compartido desde Supabase. Lo que ya tienes abierto no se eliminará de la pantalla.");
+      setLoadError("We could not load the shared history from Supabase. The evaluation currently open on your screen will not be removed.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -193,7 +199,13 @@ export function EvaluationWorkspace() {
   const activeRole = active ? getRole(active.roleSlug) : null;
   const activeResult = useMemo(() => active && activeRole ? evaluateCandidate(activeRole, active.scores, active.logistics) : null, [active, activeRole]);
   const isOptery = active?.roleSlug === "optery-senior-backend";
-  const practicalComplete = Boolean(isOptery && active && OPTERY_PRACTICAL.every((item) => active.practicalScores[item.id] !== null && active.practicalScores[item.id] !== undefined) && active.practicalEvidence.__projectStart);
+  const projectStartValue = normalizeProjectStart(active?.practicalEvidence.__projectStart);
+  const practicalComplete = Boolean(
+    isOptery &&
+    active &&
+    projectStartValue !== "Not evaluated" &&
+    OPTERY_PRACTICAL.every((item) => active.practicalScores[item.id] !== null && active.practicalScores[item.id] !== undefined),
+  );
 
   useEffect(() => {
     if (!loadedOnce.current || !active) return;
@@ -231,13 +243,27 @@ export function EvaluationWorkspace() {
       });
       if (!response.ok) throw new Error("Create failed");
       const data = (await response.json()) as { evaluation: SavedEvaluation };
-      const next = { ...data.evaluation, evidence: data.evaluation.evidence ?? {}, practicalScores: data.evaluation.practicalScores ?? emptyPracticalScores(roleSlug), practicalEvidence: data.evaluation.practicalEvidence ?? {}, screeningCompleted: Boolean(data.evaluation.screeningCompleted) };
+      const next = {
+        ...data.evaluation,
+        evidence: data.evaluation.evidence ?? {},
+        practicalScores: data.evaluation.practicalScores ?? emptyPracticalScores(roleSlug),
+        practicalEvidence: data.evaluation.practicalEvidence ?? {},
+        screeningCompleted: Boolean(data.evaluation.screeningCompleted),
+      };
       setEvaluations((current) => [next, ...current.filter((item) => item.id !== next.id)]);
       setActiveId(next.id);
-      setCandidateName(""); setLinkedin(""); setCurrentRole(""); setCurrentCompany(""); setLocation(""); setShowExtra(false); setSaveState("saved");
+      setCandidateName("");
+      setLinkedin("");
+      setCurrentRole("");
+      setCurrentCompany("");
+      setLocation("");
+      setShowExtra(false);
+      setSaveState("saved");
     } catch {
-      setLoadError("No se pudo crear la evaluación en Supabase.");
-    } finally { setCreating(false); }
+      setLoadError("The evaluation could not be created in Supabase.");
+    } finally {
+      setCreating(false);
+    }
   }
 
   function updateActive(updater: (current: SavedEvaluation) => SavedEvaluation) {
@@ -255,7 +281,18 @@ export function EvaluationWorkspace() {
 
   function resetActive() {
     if (!active) return;
-    updateActive((current) => ({ ...current, scores: emptyScores(current.roleSlug), logistics: emptyLogistics(current.roleSlug), evidence: {}, practicalScores: emptyPracticalScores(current.roleSlug), practicalEvidence: {}, notes: "", screeningCompleted: false, completed: false, updatedAt: new Date().toISOString() }));
+    updateActive((current) => ({
+      ...current,
+      scores: emptyScores(current.roleSlug),
+      logistics: emptyLogistics(current.roleSlug),
+      evidence: {},
+      practicalScores: emptyPracticalScores(current.roleSlug),
+      practicalEvidence: {},
+      notes: "",
+      screeningCompleted: false,
+      completed: false,
+      updatedAt: new Date().toISOString(),
+    }));
   }
 
   async function saveScreening() {
@@ -266,7 +303,9 @@ export function EvaluationWorkspace() {
     try {
       await persistEvaluation(next);
       setSaveState("saved");
-    } catch { setSaveState("error"); }
+    } catch {
+      setSaveState("error");
+    }
   }
 
   async function finishEvaluation() {
@@ -277,12 +316,15 @@ export function EvaluationWorkspace() {
     try {
       await persistEvaluation(next);
       setSaveState("saved");
-      // Keep the just-finished record on screen. Refreshes merge instead of replacing local state.
       void refreshHistory();
-    } catch { setSaveState("error"); }
+    } catch {
+      setSaveState("error");
+    }
   }
 
-  const evaluatedCount = activeRole && active ? [...activeRole.technical, ...activeRole.operating].filter((criterion) => active.scores[criterion.id] !== null && active.scores[criterion.id] !== undefined).length : 0;
+  const evaluatedCount = activeRole && active
+    ? [...activeRole.technical, ...activeRole.operating].filter((criterion) => active.scores[criterion.id] !== null && active.scores[criterion.id] !== undefined).length
+    : 0;
   const totalCriteria = activeRole ? activeRole.technical.length + activeRole.operating.length : 0;
   const completedCount = evaluations.filter((item) => item.completed).length;
 
@@ -290,19 +332,21 @@ export function EvaluationWorkspace() {
     <div className={styles.workspace}>
       <aside className={styles.sidebar}>
         <button type="button" className={styles.brand} onClick={() => setActiveId(null)}><span className={styles.brandMark}>P</span><span>PurrfectHire</span></button>
-        <button type="button" className={styles.newButton} onClick={() => setActiveId(null)}><Plus size={16} /> Nueva evaluación</button>
+        <button type="button" className={styles.newButton} onClick={() => setActiveId(null)}><Plus size={16} /> New evaluation</button>
+
         <div className={styles.sidebarSection}>
           <div className={styles.sidebarHeading} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span>Evaluaciones · {completedCount} finalizadas</span>
-            <button type="button" onClick={() => void refreshHistory(true)} title="Actualizar historial compartido" style={{ border: 0, background: "transparent", padding: 0, cursor: "pointer", color: "inherit" }}><RefreshCw size={12} className={refreshing ? styles.spin : undefined} /></button>
+            <span>Evaluations · {completedCount} completed</span>
+            <button type="button" onClick={() => void refreshHistory(true)} title="Refresh shared history" style={{ border: 0, background: "transparent", padding: 0, cursor: "pointer", color: "inherit" }}><RefreshCw size={12} className={refreshing ? styles.spin : undefined} /></button>
           </div>
           <div className={styles.historyList}>
-            {loading ? <p className={styles.emptyHistory}>Cargando historial compartido…</p> : null}
-            {!loading && evaluations.length === 0 ? <p className={styles.emptyHistory}>Todavía no hay evaluaciones.</p> : null}
+            {loading ? <p className={styles.emptyHistory}>Loading shared history…</p> : null}
+            {!loading && evaluations.length === 0 ? <p className={styles.emptyHistory}>No evaluations yet.</p> : null}
             {evaluations.map((evaluation) => {
-              const role = getRole(evaluation.roleSlug); if (!role) return null;
+              const role = getRole(evaluation.roleSlug);
+              if (!role) return null;
               const result = evaluateCandidate(role, evaluation.scores, evaluation.logistics);
-              const stageLabel = evaluation.completed ? result.decision : evaluation.roleSlug === "optery-senior-backend" && evaluation.screeningCompleted ? "Teoría guardada" : "En curso";
+              const stageLabel = evaluation.completed ? result.decision : evaluation.roleSlug === "optery-senior-backend" && evaluation.screeningCompleted ? "Theory saved" : "In progress";
               const stageClass = evaluation.completed ? styles[`status${result.decision}`] : styles.statusDraft;
               return (
                 <button key={evaluation.id} type="button" onClick={() => setActiveId(evaluation.id)} className={`${styles.historyItem} ${evaluation.id === activeId ? styles.historyItemActive : ""}`}>
@@ -318,79 +362,112 @@ export function EvaluationWorkspace() {
 
       <main className={styles.main}>
         {!active || !activeRole || !activeResult ? (
-          <div className={styles.startWrap}><div className={styles.startCard}>
-            <span className={styles.eyebrow}>Nueva evaluación</span><h1>Empieza la entrevista.</h1><p>Selecciona la vacante y crea la evaluación. El historial lateral se comparte desde Supabase.</p>
-            {loadError ? <p style={{ margin: "14px 0", color: "#8a4141", fontSize: 12 }}>{loadError}</p> : null}
-            <div className={styles.formGrid}>
-              <label className={styles.field}><span>Candidato *</span><input value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Nombre completo" autoFocus /></label>
-              <label className={styles.field}><span>Vacante *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>{roles.map((role) => <option key={role.slug} value={role.slug}>{role.client} · {role.role}</option>)}</select></label>
-              <label className={styles.field}><span>LinkedIn</span><input value={linkedin} onChange={(event) => setLinkedin(event.target.value)} placeholder="linkedin.com/in/..." /></label>
+          <div className={styles.startWrap}>
+            <div className={styles.startCard}>
+              <span className={styles.eyebrow}>New evaluation</span>
+              <h1>Start the interview.</h1>
+              <p>Select the role and create the candidate evaluation. The sidebar history is shared through Supabase.</p>
+              {loadError ? <p style={{ margin: "14px 0", color: "#8a4141", fontSize: 12 }}>{loadError}</p> : null}
+
+              <div className={styles.formGrid}>
+                <label className={styles.field}><span>Candidate *</span><input value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Full name" autoFocus /></label>
+                <label className={styles.field}><span>Role *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>{roles.map((role) => <option key={role.slug} value={role.slug}>{role.client} · {role.role}</option>)}</select></label>
+                <label className={styles.field}><span>LinkedIn</span><input value={linkedin} onChange={(event) => setLinkedin(event.target.value)} placeholder="linkedin.com/in/..." /></label>
+              </div>
+
+              <button type="button" className={styles.extraToggle} onClick={() => setShowExtra((value) => !value)}>{showExtra ? "Hide optional information" : "Add optional information"}</button>
+              {showExtra ? <div className={styles.formGridSecondary}>
+                <label className={styles.field}><span>Current role</span><input value={currentRole} onChange={(event) => setCurrentRole(event.target.value)} /></label>
+                <label className={styles.field}><span>Current company</span><input value={currentCompany} onChange={(event) => setCurrentCompany(event.target.value)} /></label>
+                <label className={styles.field}><span>Location</span><input value={location} onChange={(event) => setLocation(event.target.value)} /></label>
+              </div> : null}
+
+              <button type="button" className={styles.primaryButton} onClick={startNewEvaluation} disabled={!candidateName.trim() || creating || Boolean(loadError)}>
+                {creating ? <LoaderCircle size={16} className={styles.spin} /> : null}
+                {creating ? "Creating…" : "Start evaluation"} {!creating ? <ChevronRight size={16} /> : null}
+              </button>
             </div>
-            <button type="button" className={styles.extraToggle} onClick={() => setShowExtra((value) => !value)}>{showExtra ? "Ocultar datos opcionales" : "Agregar datos opcionales"}</button>
-            {showExtra ? <div className={styles.formGridSecondary}>
-              <label className={styles.field}><span>Cargo actual</span><input value={currentRole} onChange={(event) => setCurrentRole(event.target.value)} /></label>
-              <label className={styles.field}><span>Empresa actual</span><input value={currentCompany} onChange={(event) => setCurrentCompany(event.target.value)} /></label>
-              <label className={styles.field}><span>Ubicación</span><input value={location} onChange={(event) => setLocation(event.target.value)} /></label>
-            </div> : null}
-            <button type="button" className={styles.primaryButton} onClick={startNewEvaluation} disabled={!candidateName.trim() || creating || Boolean(loadError)}>{creating ? <LoaderCircle size={16} className={styles.spin} /> : null}{creating ? "Creando…" : "Iniciar evaluación"} {!creating ? <ChevronRight size={16} /> : null}</button>
-          </div></div>
+          </div>
         ) : (
           <div className={styles.evaluationWrap}>
             <header className={styles.evaluationHeader}>
-              <div><div className={styles.eyebrow}>{activeRole.client} · {activeRole.role}</div><h1>{active.candidateName}</h1><p>{[active.currentRole, active.currentCompany, active.location].filter(Boolean).join(" · ") || "Evaluación de entrevista"}</p></div>
+              <div>
+                <div className={styles.eyebrow}>{activeRole.client} · {activeRole.role}</div>
+                <h1>{active.candidateName}</h1>
+                <p>{[active.currentRole, active.currentCompany, active.location].filter(Boolean).join(" · ") || "Interview evaluation"}</p>
+              </div>
               <div className={styles.headerActions}>
-                <span style={{ fontSize: 11, color: saveState === "error" ? "#8a4141" : "#777771" }}>{saveState === "saving" ? "Guardando…" : saveState === "error" ? "Error al guardar" : "Guardado para todos"}</span>
-                {(active.completed || active.screeningCompleted) ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> Documento</a> : null}
+                <span style={{ fontSize: 11, color: saveState === "error" ? "#8a4141" : "#777771" }}>{saveState === "saving" ? "Saving…" : saveState === "error" ? "Save error" : "Saved for everyone"}</span>
+                {(active.completed || active.screeningCompleted) ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> Report</a> : null}
                 {active.linkedin ? <a href={active.linkedin.startsWith("http") ? active.linkedin : `https://${active.linkedin}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}>LinkedIn <ExternalLink size={14} /></a> : null}
-                <button type="button" className={styles.iconButton} onClick={resetActive} title="Reiniciar evaluación"><RotateCcw size={15} /></button>
+                <button type="button" className={styles.iconButton} onClick={resetActive} title="Reset evaluation"><RotateCcw size={15} /></button>
               </div>
             </header>
 
             <section className={styles.summaryCard}>
-              <div className={styles.summaryIntro}><span className={styles.eyebrow}>Resultado del screening</span><div className={`${styles.decisionPill} ${styles[`decision${activeResult.decision}`]}`}>{activeResult.decision}</div><p>{evaluatedCount} de {totalCriteria} criterios evaluados</p></div>
-              <div className={styles.scoreSummary}><div><span>Técnico</span><strong>{activeResult.technicalScore?.toFixed(2) ?? "—"}</strong></div><div><span>Forma de trabajo</span><strong>{activeResult.operatingScore?.toFixed(2) ?? "—"}</strong></div><div><span>Total</span><strong>{activeResult.overallScore?.toFixed(2) ?? "—"}</strong></div></div>
+              <div className={styles.summaryIntro}><span className={styles.eyebrow}>Screening result</span><div className={`${styles.decisionPill} ${styles[`decision${activeResult.decision}`]}`}>{activeResult.decision}</div><p>{evaluatedCount} of {totalCriteria} criteria evaluated</p></div>
+              <div className={styles.scoreSummary}><div><span>Technical</span><strong>{activeResult.technicalScore?.toFixed(2) ?? "—"}</strong></div><div><span>Ways of working</span><strong>{activeResult.operatingScore?.toFixed(2) ?? "—"}</strong></div><div><span>Overall</span><strong>{activeResult.overallScore?.toFixed(2) ?? "—"}</strong></div></div>
               <div className={styles.summaryReason}>{activeResult.reasons.slice(0, 2).map((reason) => <p key={reason}>{reason}</p>)}</div>
             </section>
-            <div className={styles.scaleLegend}><strong>Escala</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
-            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Screening teórico · 50% del score</span><h2>Técnico</h2></div><span>{activeResult.technicalCoverage}% evaluado</span></div><div className={styles.criteriaStack}>
-              {activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}
-            </div></section>
+            <div className={styles.scaleLegend}><strong>Scale</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
-            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Screening teórico · 50% del score</span><h2>Forma de trabajo</h2></div><span>{activeResult.operatingCoverage}% evaluado</span></div><p className={styles.sectionHelper}>Solo comportamientos observables relevantes al cargo.</p><div className={styles.criteriaStack}>
-              {activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}
-            </div></section>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · 50% of score</span><h2>Technical</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
+              <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+            </section>
 
-            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Datos por confirmar</span><h2>Condiciones del candidato</h2></div></div><div className={styles.logisticsGrid}>
-              {activeRole.logistics.map((check) => <label className={styles.field} key={check.id}><span>{check.label}</span>{check.type === "boolean" ? <div className={styles.choiceRow}>{[{ label: "Sin confirmar", value: null }, { label: "Sí", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" className={active.logistics[check.id] === option.value ? styles.choiceActive : ""} onClick={() => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: option.value } }))}>{option.label}</button>)}</div> : <input value={typeof active.logistics[check.id] === "string" ? String(active.logistics[check.id]) : ""} placeholder={check.placeholder} onChange={(event) => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: event.target.value } }))} />}</label>)}
-            </div></section>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · 50% of score</span><h2>Ways of working</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
+              <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
+              <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+            </section>
+
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Information to confirm</span><h2>Candidate conditions</h2></div></div>
+              <div className={styles.logisticsGrid}>{activeRole.logistics.map((check) => <label className={styles.field} key={check.id}><span>{check.label}</span>{check.type === "boolean" ? <div className={styles.choiceRow}>{[{ label: "Not confirmed", value: null }, { label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" className={active.logistics[check.id] === option.value ? styles.choiceActive : ""} onClick={() => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: option.value } }))}>{option.label}</button>)}</div> : <input value={typeof active.logistics[check.id] === "string" ? String(active.logistics[check.id]) : ""} placeholder={check.placeholder} onChange={(event) => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: event.target.value } }))} />}</label>)}</div>
+            </section>
 
             {isOptery ? <>
               <div className={styles.finishBar} style={{ marginTop: 28 }}>
-                <div><strong>{active.screeningCompleted ? "Screening teórico guardado" : "¿Terminaste la parte teórica?"}</strong><span>Este botón guarda el screening y deja la prueba práctica completamente pendiente para hacerla después.</span></div>
-                <button type="button" className={styles.primaryButton} onClick={saveScreening} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Save size={16} />} Guardar parte teórica</button>
+                <div><strong>{active.screeningCompleted ? "Theoretical screen saved" : "Finished the theoretical screen?"}</strong><span>This saves the interview screen and leaves the practical assessment completely blank so it can be completed later.</span></div>
+                <button type="button" className={styles.primaryButton} onClick={saveScreening} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Save size={16} />} Save theoretical screen</button>
               </div>
 
-              <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Technical Assessment · 45–60 min · en vivo y sin IA</span><h2>Prueba práctica</h2></div><span>{practicalComplete ? "Completa" : "Pendiente"}</span></div>
-                <p className={styles.sectionHelper}>Se puede dejar totalmente en blanco después de guardar el screening. Primero: proyecto desconocido corriendo en menos de 3 minutos. Luego se observan las cuatro dimensiones técnicas.</p>
-                <div className={styles.logisticsGrid} style={{ marginBottom: 10 }}><label className={styles.field}><span>Proyecto desconocido corriendo en &lt;3 min</span><div className={styles.choiceRow}>{["Sin evaluar", "Pasa", "No pasa"].map((label) => <button key={label} type="button" className={(active.practicalEvidence.__projectStart || "Sin evaluar") === label ? styles.choiceActive : ""} onClick={() => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, __projectStart: label } }))}>{label}</button>)}</div></label></div>
-                <div className={styles.criteriaStack}>{OPTERY_PRACTICAL.map((criterion) => <article className={styles.criterionCard} key={criterion.id}><div className={styles.criterionMeta}><span>Práctica</span><span>Observar evidencia en vivo</span></div><h3>{criterion.label}</h3><p className={styles.question}>{criterion.prompt}</p><div className={styles.scoreBlock}><div className={styles.scoreButtons}>{[1,2,3,4,5].map((score) => <button key={score} type="button" onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: score as Score } }))} className={`${styles.scoreButton} ${active.practicalScores[criterion.id] === score ? `${styles.selectedScore} ${scoreTone(score as Score)}` : ""}`}>{score}</button>)}</div><button type="button" className={styles.notEvaluated} onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: null } }))}>Sin evaluar</button></div><label className={styles.field} style={{ marginTop: 14 }}><span>Evidencia / hints utilizados</span><input value={active.practicalEvidence[criterion.id] ?? ""} onChange={(event) => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, [criterion.id]: event.target.value } }))} placeholder="Qué resolvió solo, dónde necesitó pistas y qué quedó sin probar" /></label></article>)}</div>
+              <section className={styles.section}>
+                <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Technical assessment · 45–60 min · live and without AI</span><h2>Practical assessment</h2></div><span>{practicalComplete ? "Complete" : "Pending"}</span></div>
+                <p className={styles.sectionHelper}>This section can stay completely blank after the theoretical screen is saved. First: get an unfamiliar project running in under 3 minutes. Then observe the four technical dimensions.</p>
+
+                <div className={styles.logisticsGrid} style={{ marginBottom: 10 }}>
+                  <label className={styles.field}><span>Unfamiliar project running in &lt;3 min</span><div className={styles.choiceRow}>{["Not evaluated", "Pass", "Fail"].map((label) => <button key={label} type="button" className={projectStartValue === label ? styles.choiceActive : ""} onClick={() => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, __projectStart: label } }))}>{label}</button>)}</div></label>
+                </div>
+
+                <div className={styles.criteriaStack}>{OPTERY_PRACTICAL.map((criterion) => <article className={styles.criterionCard} key={criterion.id}>
+                  <div className={styles.criterionMeta}><span>Practical</span><span>Observe live evidence</span></div>
+                  <h3>{criterion.label}</h3>
+                  <p className={styles.question}>{criterion.prompt}</p>
+                  <div className={styles.scoreBlock}><div className={styles.scoreButtons}>{[1,2,3,4,5].map((score) => <button key={score} type="button" onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: score as Score } }))} className={`${styles.scoreButton} ${active.practicalScores[criterion.id] === score ? `${styles.selectedScore} ${scoreTone(score as Score)}` : ""}`}>{score}</button>)}</div><button type="button" className={styles.notEvaluated} onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: null } }))}>Not evaluated</button></div>
+                  <label className={styles.field} style={{ marginTop: 14 }}><span>Evidence / hints used</span><input value={active.practicalEvidence[criterion.id] ?? ""} onChange={(event) => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, [criterion.id]: event.target.value } }))} placeholder="What they solved independently, where they needed hints, and what remained untested" /></label>
+                </article>)}</div>
               </section>
             </> : null}
 
-            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Evidencia final</span><h2>Qué quedó probado</h2></div></div><div className={styles.logisticsGrid}>
-              <label className={styles.field}><span>Qué resolvió / demostró</span><input value={active.evidence.__solved ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __solved: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
-              <label className={styles.field}><span>Dónde necesitó pistas o apoyo</span><input value={active.evidence.__hints ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __hints: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
-              <label className={styles.field}><span>Qué no pudimos validar</span><input value={active.evidence.__untested ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __untested: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
-            </div></section>
+            <section className={styles.section}>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Final evidence</span><h2>What was demonstrated</h2></div></div>
+              <div className={styles.logisticsGrid}>
+                <label className={styles.field}><span>What they solved / demonstrated</span><input value={active.evidence.__solved ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __solved: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
+                <label className={styles.field}><span>Where they needed hints or support</span><input value={active.evidence.__hints ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __hints: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
+                <label className={styles.field}><span>What we could not validate</span><input value={active.evidence.__untested ?? ""} onChange={(event) => updateActive((current) => ({ ...current, evidence: { ...current.evidence, __untested: event.target.value }, completed: false, updatedAt: new Date().toISOString() }))} /></label>
+              </div>
+            </section>
 
-            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Opcional</span><h2>Notas</h2></div></div><textarea className={styles.notes} rows={5} value={active.notes} placeholder="Contexto útil de la entrevista. También aparecerá en el documento." onChange={(event) => updateActive((current) => ({ ...current, notes: event.target.value, completed: false, updatedAt: new Date().toISOString() }))} /></section>
+            <section className={styles.section}><div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Optional</span><h2>Notes</h2></div></div><textarea className={styles.notes} rows={5} value={active.notes} placeholder="Useful interview context. This will also appear in the report." onChange={(event) => updateActive((current) => ({ ...current, notes: event.target.value, completed: false, updatedAt: new Date().toISOString() }))} /></section>
 
             <div className={styles.finishBar}>
-              <div><strong>{active.completed ? "Evaluación finalizada" : isOptery && active.screeningCompleted ? "Screening guardado · práctica pendiente" : "Evaluación en curso"}</strong><span>{saveState === "error" ? "No se pudo guardar el último cambio." : "El registro permanece en Supabase y en el historial lateral."}</span></div>
+              <div><strong>{active.completed ? "Evaluation completed" : isOptery && active.screeningCompleted ? "Theory saved · practical pending" : "Evaluation in progress"}</strong><span>{saveState === "error" ? "The last change could not be saved." : "The record stays in Supabase and in the shared sidebar history."}</span></div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                {(active.completed || active.screeningCompleted) ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> Ver documento</a> : null}
-                {!isOptery || practicalComplete ? <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Guardar cambios" : "Finalizar evaluación"}</button> : <span style={{ fontSize: 11, color: "#777771", alignSelf: "center" }}>La práctica puede quedar pendiente. Usa “Guardar parte teórica”.</span>}
+                {(active.completed || active.screeningCompleted) ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> View report</a> : null}
+                {!isOptery || practicalComplete ? <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Save changes" : "Complete evaluation"}</button> : <span style={{ fontSize: 11, color: "#777771", alignSelf: "center" }}>The practical stage can stay pending. Use “Save theoretical screen”.</span>}
               </div>
             </div>
           </div>

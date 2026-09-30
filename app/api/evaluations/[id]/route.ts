@@ -28,7 +28,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       .single();
 
     if (readError || !assessment) {
-      return NextResponse.json({ error: "Evaluación no encontrada." }, { status: 404 });
+      return NextResponse.json({ error: "Evaluation not found." }, { status: 404 });
     }
 
     const candidate = Array.isArray((assessment as any).candidates)
@@ -38,7 +38,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const role = roleSlug ? getRole(roleSlug) : null;
 
     if (!role) {
-      return NextResponse.json({ error: "La vacante de esta evaluación no es válida." }, { status: 400 });
+      return NextResponse.json({ error: "The role linked to this evaluation is not valid." }, { status: 400 });
     }
 
     const scores = payload.scores ?? ((assessment as any).scores ?? {});
@@ -77,6 +77,6 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ ok: true, updatedAt: updated.updated_at });
   } catch (error) {
     console.error("Failed to update evaluation", error);
-    return NextResponse.json({ error: "No se pudo guardar la evaluación." }, { status: 500 });
+    return NextResponse.json({ error: "The evaluation could not be saved." }, { status: 500 });
   }
 }
