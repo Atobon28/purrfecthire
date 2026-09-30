@@ -1,0 +1,22 @@
+.brand-mark,
+[class*="brandMark"] {
+  background-color: transparent !important;
+  background-image: url('/purrfecthire-logo.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  border-radius: 50% !important;
+}
+
+article [class*="logo"] {
+  background-color: transparent !important;
+  background-image: url('/purrfecthire-logo.png') !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+  background-size: cover !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  border-radius: 50% !important;
+}
