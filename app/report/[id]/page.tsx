@@ -142,16 +142,20 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
                 <p><strong>Result:</strong> {practicalResult}</p>
               </div>
             </div>
-
-            {isOptery ? <div className={styles.fit} style={{ marginTop: 14 }}>
-              <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
-              {OPTERY_PRACTICAL.map((criterion) => {
-                const score = practicalScores[criterion.id];
-                return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Not evaluated" : `${score}/5`}</span></div>;
-              })}
-            </div> : null}
           </section>
         </div>
+
+        {isOptery ? <section className={styles.evidence}>
+          <h2 style={{ fontSize: 15, marginBottom: 6 }}>Practical assessment breakdown</h2>
+          <p className={styles.small} style={{ marginBottom: 14 }}>Detailed live-assessment results are shown separately below the summary so they are easier to scan.</p>
+          <div className={styles.fit}>
+            <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
+            {OPTERY_PRACTICAL.map((criterion) => {
+              const score = practicalScores[criterion.id];
+              return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Not evaluated" : `${score}/5`}</span></div>;
+            })}
+          </div>
+        </section> : null}
 
         <section className={styles.evidence}>
           <h2 style={{ fontSize: 15, marginBottom: 14 }}>Evaluation evidence</h2>
