@@ -17,16 +17,16 @@ const optery: RoleDefinition = {
       hardGate: true,
       minimumScore: 4,
       question:
-        "In the live exercise, explain how you would change this unfamiliar backend when the workflow spans permissions, database changes, external services and competing performance or maintainability constraints.",
+        "Tell me about a production backend you personally changed when the workflow involved permissions, database changes, external services, and competing performance or maintainability constraints.",
       followUps: [
         "What viable designs did you consider?",
         "What constraints made you choose one over the others?",
-        "What edge cases would you test before calling it production-ready?",
+        "What did you personally implement, and which edge cases mattered most?",
       ],
       strongSignals: [
         "Compares viable designs against explicit constraints",
         "Explains consequences and trade-offs using production examples",
-        "Connects design choices to working code, tests and meaningful edge cases",
+        "Connects design choices to implementation, tests and meaningful edge cases",
       ],
       redFlags: [
         "Chooses a design without naming constraints or trade-offs",
@@ -42,11 +42,11 @@ const optery: RoleDefinition = {
       hardGate: true,
       minimumScore: 4,
       question:
-        "In the live exercise, diagnose the data-integrity or concurrency problem and explain how you would prevent conflicting writes while the system remains in production.",
+        "Tell me about a production data-integrity or concurrency issue you personally diagnosed. What was the failure mechanism, and how did you prevent conflicting writes?",
       followUps: [
-        "What is the underlying failure mechanism?",
-        "Would you use indexing, isolation, locking, a schema change or another approach? Why?",
-        "How would you verify correctness and performance?",
+        "What was the underlying failure mechanism?",
+        "Did you use indexing, isolation, locking, a schema change, or another approach? Why?",
+        "How did you verify correctness and performance?",
       ],
       strongSignals: [
         "Identifies the actual failure mechanism",
@@ -56,6 +56,7 @@ const optery: RoleDefinition = {
       redFlags: [
         "Proposes a database fix without explaining why the issue occurs",
         "Cannot reason about concurrent updates, migrations or query behavior",
+        "Confidently makes an incorrect claim about transactions, locks, isolation, or SQL behavior",
       ],
     },
     {
@@ -67,11 +68,11 @@ const optery: RoleDefinition = {
       hardGate: true,
       minimumScore: 4,
       question:
-        "In the live exercise, make the workflow preserve its business outcome when requests are duplicated, messages arrive late, dependencies fail or a worker dies mid-flow.",
+        "Tell me about a production workflow where retries, duplicate requests, late messages, dependency failures, or worker crashes could create an incorrect business outcome. How did you make it reliable?",
       followUps: [
-        "Where is state persisted?",
-        "How do you prevent duplicate work?",
-        "How do retries, acknowledgements, rate limits and reconciliation behave?",
+        "Where was state persisted?",
+        "How did you prevent duplicate work?",
+        "How did retries, acknowledgements, rate limits and reconciliation behave?",
       ],
       strongSignals: [
         "Explains state persistence and idempotency clearly",
@@ -92,19 +93,24 @@ const optery: RoleDefinition = {
       hardGate: true,
       minimumScore: 4,
       question:
-        "In the live exercise, investigate the slow endpoint from symptoms to root cause and show how you know the fix worked.",
+        "Tell me about a production endpoint or performance incident you personally debugged from symptoms to root cause. How did you isolate the bottleneck and verify the fix?",
       followUps: [
-        "What evidence creates your first hypothesis?",
-        "How do you distinguish application, database and infrastructure bottlenecks?",
-        "Which metric proves the change improved the system?",
+        "What evidence created your first hypothesis?",
+        "How did you distinguish application, database and infrastructure bottlenecks?",
+        "What SQL did the ORM generate, and how did you inspect or verify it?",
+        "What changes when the same path has to deal with roughly 10M rows, especially around memory, query shape, pagination or materialization?",
+        "Which metric proved the change improved the system?",
       ],
       strongSignals: [
         "Turns symptoms into testable hypotheses",
         "Isolates the responsible layer using evidence",
+        "Can connect ORM behavior to the SQL actually executed",
+        "Reasons concretely about memory and query behavior at roughly 10M rows",
         "Measures the impact through latency, errors, throughput or resource use and explains recurrence prevention",
       ],
       redFlags: [
         "Jumps directly to a fix without establishing root cause",
+        "Cannot explain the SQL generated by the ORM or how query behavior changes at scale",
         "Cannot state how the improvement would be measured",
       ],
     },
