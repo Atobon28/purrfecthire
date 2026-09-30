@@ -96,7 +96,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
   return (
     <main className={styles.page}>
-      <div className={styles.toolbar}><PrintButton /></div>
+      <div className={styles.toolbar}><PrintButton hasPractical={isOptery} /></div>
       <article className={styles.sheet}>
         <header className={styles.top}>
           <div className={styles.brand}><span className={styles.logo}>P</span>PurrfectHire</div>
@@ -106,7 +106,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
         <div className={styles.hero}>
           <div>
             <div className={styles.eyebrow}>Executive scorecard · {updatedAt}</div>
-            <h1>{candidate.name}</h1>
+            <h1 data-report-candidate>{candidate.name}</h1>
             <div className={styles.sub}>{[candidate.current_role, candidate.current_company].filter(Boolean).join(" · ") || "Current information not confirmed"} · For <b>{role.role} / {role.client}</b></div>
             <div className={styles.sub} style={{ marginTop: 8 }}>{[candidate.location, availability].filter(Boolean).join(" · ") || "Location / availability not confirmed"}{candidate.linkedin_url ? <> · <a href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}>LinkedIn</a></> : null}</div>
           </div>
@@ -117,10 +117,10 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           </aside>
         </div>
 
-        <div className={styles.summary}><b>20-second read</b>{summary}</div>
+        <div className={styles.summary} data-pdf-section="theory"><b>20-second read</b>{summary}</div>
 
         <div className={styles.grid}>
-          <section className={styles.section}>
+          <section className={styles.section} data-pdf-section="theory">
             <h2>Why this candidate fits</h2>
             {strongest.length ? strongest.map((criterion, index) => (
               <div className={styles.proof} key={criterion.id}>
@@ -133,7 +133,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             )) : <p className={styles.small}>No criteria have been scored yet.</p>}
           </section>
 
-          <section className={styles.section}>
+          <section className={styles.section} data-pdf-section="practical">
             <h2>Practical assessment breakdown</h2>
             {isOptery ? (
               <div className={styles.fit}>
@@ -153,7 +153,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           </section>
         </div>
 
-        <section className={styles.evidence}>
+        <section className={styles.evidence} data-pdf-section="full-only">
           <h2 style={{ fontSize: 15, marginBottom: 14 }}>Theoretical vs practical evaluation</h2>
           <div className={styles.evidenceGrid}>
             <div className={styles.evidenceCard}>
@@ -169,17 +169,23 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           </div>
         </section>
 
-        <section className={styles.evidence}>
-          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Evaluation evidence</h2>
+        <section className={styles.evidence} data-pdf-section="theory">
+          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Theoretical screening evidence</h2>
           <div className={styles.evidenceGrid}>
             <div className={styles.evidenceCard}><b>What they solved / demonstrated</b><p>{evidence.__solved?.trim() || "Not recorded."}</p></div>
             <div className={styles.evidenceCard}><b>Where they needed hints or support</b><p>{evidence.__hints?.trim() || "Not recorded."}</p></div>
             <div className={styles.evidenceCard}><b>What we could not validate</b><p>{evidence.__untested?.trim() || (isOptery && practicalOutcome === "Not evaluated" ? "Practical assessment pending." : "Not recorded.")}</p></div>
           </div>
-          {isOptery && OPTERY_PRACTICAL.some((criterion) => practicalEvidence[criterion.id]?.trim()) ? <div className={styles.evidenceGrid} style={{ marginTop: 14 }}>{OPTERY_PRACTICAL.filter((criterion) => practicalEvidence[criterion.id]?.trim()).map((criterion) => <div className={styles.evidenceCard} key={criterion.id}><b>{criterion.label} · practical evidence</b><p>{practicalEvidence[criterion.id]}</p></div>)}</div> : null}
         </section>
 
-        {(data as any).recruiter_notes ? <div className={styles.notes}><b>Recruiter notes</b><br />{(data as any).recruiter_notes}</div> : null}
+        {isOptery ? <section className={styles.evidence} data-pdf-section="practical">
+          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Practical assessment evidence</h2>
+          <div className={styles.evidenceGrid}>
+            {OPTERY_PRACTICAL.map((criterion) => <div className={styles.evidenceCard} key={criterion.id}><b>{criterion.label}</b><p>{practicalEvidence[criterion.id]?.trim() || "No practical evidence recorded."}</p></div>)}
+          </div>
+        </section> : null}
+
+        {(data as any).recruiter_notes ? <div className={styles.notes} data-pdf-section="theory"><b>Recruiter notes</b><br />{(data as any).recruiter_notes}</div> : null}
         <footer className={styles.footer}><span>Prepared in PurrfectHire · Client/internal use</span><span>Statuses are based on available evidence; “not evaluated” does not imply rejection.</span></footer>
       </article>
     </main>
