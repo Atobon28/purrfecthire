@@ -365,7 +365,7 @@ export function EvaluationWorkspace() {
   return (
     <div className={styles.workspace}>
       <aside className={styles.sidebar}>
-        <button type="button" className={styles.brand} onClick={() => setActiveId(null)}><span className={styles.brandMark}>P</span><span>PurrfectHire</span></button>
+        <button type="button" className={styles.brand} onClick={() => setActiveId(null)}><span className={styles.brandMark}>P</span><span>Purrfect Hire</span></button>
         <button type="button" className={styles.newButton} onClick={() => setActiveId(null)}><Plus size={16} /> New evaluation</button>
 
         <div className={styles.sidebarSection}>
