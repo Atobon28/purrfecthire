@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, ExternalLink, FileText, LoaderCircle, Plus, RefreshCw, RotateCcw, Save } from "lucide-react";
 import { evaluateCandidate } from "@/lib/scoring";
 import { getRole, roles } from "@/lib/scorecards";
+import { finalDecisionReason, normalizePracticalOutcome, resolveFinalDecision } from "@/lib/optery-practical";
 import type { Criterion, Score } from "@/lib/types";
 import styles from "./evaluation-workspace.module.css";
 
@@ -31,10 +32,26 @@ type SavedEvaluation = {
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 const OPTERY_PRACTICAL = [
-  { id: "backend-system-design", label: "Backend / System Design", prompt: "Understand the unfamiliar system and decide what to change, explaining the trade-offs." },
-  { id: "data-integrity", label: "Databases / Data Integrity", prompt: "Identify and resolve the concurrency or data-integrity problem." },
-  { id: "distributed-reliability", label: "Distributed Systems / Reliability", prompt: "Handle retries, duplicates, and external-service failures without breaking the intended business outcome." },
-  { id: "debugging-performance", label: "Production Debugging / Performance", prompt: "Investigate the slow endpoint, isolate the cause, and demonstrate that the fix works." },
+  {
+    id: "backend-system-design",
+    label: "Backend / System Design",
+    prompt: "Understand the unfamiliar system, choose what to change, implement the highest-value fix, and explain the trade-offs.",
+  },
+  {
+    id: "data-integrity",
+    label: "Databases / Data Integrity",
+    prompt: "Identify and resolve the concurrency or data-integrity problem, explaining the transaction / locking / SQL behavior behind the fix.",
+  },
+  {
+    id: "distributed-reliability",
+    label: "Distributed Systems / Reliability",
+    prompt: "Handle retries, duplicates, and external-service failures without breaking the intended business outcome.",
+  },
+  {
+    id: "debugging-performance",
+    label: "Production Debugging / Performance",
+    prompt: "Investigate the slow endpoint, explain the SQL generated behind the ORM, reason about memory and query behavior at ~10M rows, and demonstrate that the fix works.",
+  },
 ] as const;
 
 function emptyScores(roleSlug: string) {
@@ -200,12 +217,17 @@ export function EvaluationWorkspace() {
   const activeResult = useMemo(() => active && activeRole ? evaluateCandidate(activeRole, active.scores, active.logistics) : null, [active, activeRole]);
   const isOptery = active?.roleSlug === "optery-senior-backend";
   const projectStartValue = normalizeProjectStart(active?.practicalEvidence.__projectStart);
-  const practicalComplete = Boolean(
-    isOptery &&
-    active &&
-    projectStartValue !== "Not evaluated" &&
-    OPTERY_PRACTICAL.every((item) => active.practicalScores[item.id] !== null && active.practicalScores[item.id] !== undefined),
+  const practicalOutcome = normalizePracticalOutcome(active?.practicalEvidence.__overallOutcome);
+  const practicalDimensionsComplete = Boolean(
+    active && OPTERY_PRACTICAL.every((item) => active.practicalScores[item.id] !== null && active.practicalScores[item.id] !== undefined),
   );
+  const practicalComplete = Boolean(
+    isOptery && active && practicalOutcome !== "Not evaluated" &&
+    (practicalOutcome === "Fail" || (projectStartValue !== "Not evaluated" && practicalDimensionsComplete)),
+  );
+  const activeFinalDecision = active && activeResult
+    ? resolveFinalDecision(active.roleSlug, activeResult.decision, active.completed, active.practicalEvidence)
+    : null;
 
   useEffect(() => {
     if (!loadedOnce.current || !active) return;
@@ -279,6 +301,15 @@ export function EvaluationWorkspace() {
     updateActive((current) => ({ ...updater(current), completed: false, updatedAt: new Date().toISOString() }));
   }
 
+  function updateProjectStart(label: string) {
+    const logisticValue = label === "Pass" ? true : label === "Fail" ? false : null;
+    updatePractical((current) => ({
+      ...current,
+      logistics: { ...current.logistics, technicalEntryUnder3Minutes: logisticValue },
+      practicalEvidence: { ...current.practicalEvidence, __projectStart: label },
+    }));
+  }
+
   function resetActive() {
     if (!active) return;
     updateActive((current) => ({
@@ -327,6 +358,9 @@ export function EvaluationWorkspace() {
     : 0;
   const totalCriteria = activeRole ? activeRole.technical.length + activeRole.operating.length : 0;
   const completedCount = evaluations.filter((item) => item.completed).length;
+  const visibleLogistics = activeRole
+    ? activeRole.logistics.filter((check) => !(isOptery && check.id === "technicalEntryUnder3Minutes"))
+    : [];
 
   return (
     <div className={styles.workspace}>
@@ -345,9 +379,10 @@ export function EvaluationWorkspace() {
             {evaluations.map((evaluation) => {
               const role = getRole(evaluation.roleSlug);
               if (!role) return null;
-              const result = evaluateCandidate(role, evaluation.scores, evaluation.logistics);
-              const stageLabel = evaluation.completed ? result.decision : evaluation.roleSlug === "optery-senior-backend" && evaluation.screeningCompleted ? "Theory saved" : "In progress";
-              const stageClass = evaluation.completed ? styles[`status${result.decision}`] : styles.statusDraft;
+              const theoryResult = evaluateCandidate(role, evaluation.scores, evaluation.logistics);
+              const finalDecision = resolveFinalDecision(evaluation.roleSlug, theoryResult.decision, evaluation.completed, evaluation.practicalEvidence ?? {});
+              const stageLabel = evaluation.completed ? finalDecision : evaluation.roleSlug === "optery-senior-backend" && evaluation.screeningCompleted ? "Theory saved" : "In progress";
+              const stageClass = evaluation.completed ? styles[`status${finalDecision}`] : styles.statusDraft;
               return (
                 <button key={evaluation.id} type="button" onClick={() => setActiveId(evaluation.id)} className={`${styles.historyItem} ${evaluation.id === activeId ? styles.historyItemActive : ""}`}>
                   <div className={styles.historyTitleRow}><strong>{evaluation.candidateName}</strong><ChevronRight size={14} /></div>
@@ -361,7 +396,7 @@ export function EvaluationWorkspace() {
       </aside>
 
       <main className={styles.main}>
-        {!active || !activeRole || !activeResult ? (
+        {!active || !activeRole || !activeResult || !activeFinalDecision ? (
           <div className={styles.startWrap}>
             <div className={styles.startCard}>
               <span className={styles.eyebrow}>New evaluation</span>
@@ -405,41 +440,42 @@ export function EvaluationWorkspace() {
             </header>
 
             <section className={styles.summaryCard}>
-              <div className={styles.summaryIntro}><span className={styles.eyebrow}>Screening result</span><div className={`${styles.decisionPill} ${styles[`decision${activeResult.decision}`]}`}>{activeResult.decision}</div><p>{evaluatedCount} of {totalCriteria} criteria evaluated</p></div>
-              <div className={styles.scoreSummary}><div><span>Technical</span><strong>{activeResult.technicalScore?.toFixed(2) ?? "—"}</strong></div><div><span>Ways of working</span><strong>{activeResult.operatingScore?.toFixed(2) ?? "—"}</strong></div><div><span>Overall</span><strong>{activeResult.overallScore?.toFixed(2) ?? "—"}</strong></div></div>
-              <div className={styles.summaryReason}>{activeResult.reasons.slice(0, 2).map((reason) => <p key={reason}>{reason}</p>)}</div>
+              <div className={styles.summaryIntro}><span className={styles.eyebrow}>{active.completed ? "Final result" : "Screening result"}</span><div className={`${styles.decisionPill} ${styles[`decision${active.completed ? activeFinalDecision : activeResult.decision}`]}`}>{active.completed ? activeFinalDecision : activeResult.decision}</div><p>{evaluatedCount} of {totalCriteria} criteria evaluated</p></div>
+              <div className={styles.scoreSummary}><div><span>Technical</span><strong>{activeResult.technicalScore?.toFixed(2) ?? "—"}</strong></div><div><span>Ways of working</span><strong>{activeResult.operatingScore?.toFixed(2) ?? "—"}</strong></div><div><span>Overall theory</span><strong>{activeResult.overallScore?.toFixed(2) ?? "—"}</strong></div></div>
+              <div className={styles.summaryReason}><p>{active.completed ? finalDecisionReason(active.roleSlug, activeResult.reasons[0], active.completed, active.practicalEvidence) : activeResult.reasons[0]}</p></div>
             </section>
 
             <div className={styles.scaleLegend}><strong>Scale</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · 50% of score</span><h2>Technical</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Technical</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
               <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · 50% of score</span><h2>Ways of working</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Ways of working</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
               <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
               <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
               <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Information to confirm</span><h2>Candidate conditions</h2></div></div>
-              <div className={styles.logisticsGrid}>{activeRole.logistics.map((check) => <label className={styles.field} key={check.id}><span>{check.label}</span>{check.type === "boolean" ? <div className={styles.choiceRow}>{[{ label: "Not confirmed", value: null }, { label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" className={active.logistics[check.id] === option.value ? styles.choiceActive : ""} onClick={() => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: option.value } }))}>{option.label}</button>)}</div> : <input value={typeof active.logistics[check.id] === "string" ? String(active.logistics[check.id]) : ""} placeholder={check.placeholder} onChange={(event) => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: event.target.value } }))} />}</label>)}</div>
+              <div className={styles.logisticsGrid}>{visibleLogistics.map((check) => <label className={styles.field} key={check.id}><span>{check.label}</span>{check.type === "boolean" ? <div className={styles.choiceRow}>{[{ label: "Not confirmed", value: null }, { label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" className={active.logistics[check.id] === option.value ? styles.choiceActive : ""} onClick={() => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: option.value } }))}>{option.label}</button>)}</div> : <input value={typeof active.logistics[check.id] === "string" ? String(active.logistics[check.id]) : ""} placeholder={check.placeholder} onChange={(event) => updateTheory((current) => ({ ...current, logistics: { ...current.logistics, [check.id]: event.target.value } }))} />}</label>)}</div>
             </section>
 
             {isOptery ? <>
               <div className={styles.finishBar} style={{ marginTop: 28 }}>
-                <div><strong>{active.screeningCompleted ? "Theoretical screen saved" : "Finished the theoretical screen?"}</strong><span>This saves the interview screen and leaves the practical assessment completely blank so it can be completed later.</span></div>
+                <div><strong>{active.screeningCompleted ? "Theoretical screen saved" : "Finished the theoretical screen?"}</strong><span>This saves the experience-based interview screen and leaves the practical assessment completely blank so it can be completed later.</span></div>
                 <button type="button" className={styles.primaryButton} onClick={saveScreening} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Save size={16} />} Save theoretical screen</button>
               </div>
 
               <section className={styles.section}>
                 <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Technical assessment · 45–60 min · live and without AI</span><h2>Practical assessment</h2></div><span>{practicalComplete ? "Complete" : "Pending"}</span></div>
-                <p className={styles.sectionHelper}>This section can stay completely blank after the theoretical screen is saved. First: get an unfamiliar project running in under 3 minutes. Then observe the four technical dimensions.</p>
+                <p className={styles.sectionHelper}>The practical is a required gate, not an average with the theoretical score. A Fail means Do not present even if the theoretical screen is 5/5. Dimension scores document evidence only.</p>
 
                 <div className={styles.logisticsGrid} style={{ marginBottom: 10 }}>
-                  <label className={styles.field}><span>Unfamiliar project running in &lt;3 min</span><div className={styles.choiceRow}>{["Not evaluated", "Pass", "Fail"].map((label) => <button key={label} type="button" className={projectStartValue === label ? styles.choiceActive : ""} onClick={() => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, __projectStart: label } }))}>{label}</button>)}</div></label>
+                  <label className={styles.field}><span>Overall practical gate *</span><div className={styles.choiceRow}>{["Not evaluated", "Pass", "Fail"].map((label) => <button key={label} type="button" className={practicalOutcome === label ? styles.choiceActive : ""} onClick={() => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, __overallOutcome: label } }))}>{label}</button>)}</div></label>
+                  <label className={styles.field}><span>Unfamiliar project running in &lt;3 min</span><div className={styles.choiceRow}>{["Not evaluated", "Pass", "Fail"].map((label) => <button key={label} type="button" className={projectStartValue === label ? styles.choiceActive : ""} onClick={() => updateProjectStart(label)}>{label}</button>)}</div></label>
                 </div>
 
                 <div className={styles.criteriaStack}>{OPTERY_PRACTICAL.map((criterion) => <article className={styles.criterionCard} key={criterion.id}>
@@ -467,7 +503,7 @@ export function EvaluationWorkspace() {
               <div><strong>{active.completed ? "Evaluation completed" : isOptery && active.screeningCompleted ? "Theory saved · practical pending" : "Evaluation in progress"}</strong><span>{saveState === "error" ? "The last change could not be saved." : "The record stays in Supabase and in the shared sidebar history."}</span></div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
                 {(active.completed || active.screeningCompleted) ? <a href={`/report/${active.id}`} target="_blank" rel="noreferrer" className={styles.secondaryButton}><FileText size={14} /> View report</a> : null}
-                {!isOptery || practicalComplete ? <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Save changes" : "Complete evaluation"}</button> : <span style={{ fontSize: 11, color: "#777771", alignSelf: "center" }}>The practical stage can stay pending. Use “Save theoretical screen”.</span>}
+                {!isOptery || practicalComplete ? <button type="button" className={styles.primaryButton} onClick={finishEvaluation} disabled={saveState === "saving"}>{saveState === "saving" ? <LoaderCircle size={16} className={styles.spin} /> : <Check size={16} />} {active.completed ? "Save changes" : "Complete evaluation"}</button> : <span style={{ fontSize: 11, color: "#777771", alignSelf: "center" }}>The practical gate can stay pending. Use “Save theoretical screen”.</span>}
               </div>
             </div>
           </div>
