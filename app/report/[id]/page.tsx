@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getRole } from "@/lib/scorecards";
 import { evaluateCandidate } from "@/lib/scoring";
+import { finalDecisionReason, normalizePracticalOutcome, resolveFinalDecision } from "@/lib/optery-practical";
 import type { Score } from "@/lib/types";
 import { PrintButton } from "./print-button";
 import styles from "./report.module.css";
@@ -19,14 +20,6 @@ function decisionLabel(decision: "Present" | "Hold" | "Reject") {
   if (decision === "Present") return "Present";
   if (decision === "Reject") return "Do not present";
   return "Hold for review";
-}
-
-function practicalScoreAverage(scores: Record<string, Score>) {
-  const values = OPTERY_PRACTICAL
-    .map((criterion) => scores[criterion.id])
-    .filter((value): value is Exclude<Score, null> => value !== null && value !== undefined);
-  if (!values.length) return null;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export default async function CandidateReport({ params }: { params: Promise<{ id: string }> }) {
@@ -54,6 +47,8 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
   const completed = Boolean((data as any).completed);
   const isOptery = candidate.role_slug === "optery-senior-backend";
   const result = evaluateCandidate(role, scores, logistics);
+  const finalDecision = resolveFinalDecision(candidate.role_slug, result.decision, completed, practicalEvidence);
+  const practicalOutcome = normalizePracticalOutcome(practicalEvidence.__overallOutcome);
   const criteria = [...role.technical, ...role.operating];
 
   const strongest = criteria
@@ -67,27 +62,37 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
   const theoryComplete = isOptery ? screeningCompleted || completed : completed;
   const theoryStatus = theoryComplete ? "Completed" : "In progress";
-  const practicalAverage = practicalScoreAverage(practicalScores);
-  const practicalStatus = !isOptery ? "Not configured" : completed ? "Completed" : "Pending";
+  const practicalStatus = !isOptery ? "Not configured" : practicalOutcome === "Not evaluated" ? "Pending" : practicalOutcome;
   const projectStart = practicalEvidence.__projectStart || "Not evaluated";
+  const practicalSentence = !isOptery
+    ? ""
+    : practicalOutcome === "Fail"
+      ? " The practical gate failed, so the candidate must not be presented regardless of the theoretical score."
+      : practicalOutcome === "Pass"
+        ? " The required practical gate passed."
+        : " The practical gate is still pending.";
 
   const summary = strongLabels.length
-    ? `The strongest signals from the interview were ${strongLabels.slice(0, 3).join(", ")}. The theoretical/interview screen currently reads ${decisionLabel(result.decision).toLowerCase()}, with ${result.technicalScore?.toFixed(1) ?? "—"}/5 in technical criteria and ${result.operatingScore?.toFixed(1) ?? "—"}/5 in ways of working.${isOptery && !completed ? " The practical assessment is still pending." : ""}`
-    : `The theoretical/interview screen is ${theoryComplete ? "saved" : "still in progress"}.${isOptery && !completed ? " The practical assessment is still pending." : ""}`;
+    ? `The strongest signals from the interview were ${strongLabels.slice(0, 3).join(", ")}. The theoretical/interview screen currently reads ${decisionLabel(result.decision).toLowerCase()}, with ${result.technicalScore?.toFixed(1) ?? "—"}/5 in technical criteria and ${result.operatingScore?.toFixed(1) ?? "—"}/5 in ways of working.${practicalSentence}`
+    : `The theoretical/interview screen is ${theoryComplete ? "saved" : "still in progress"}.${practicalSentence}`;
 
   const availability = typeof logistics.availability === "string" ? logistics.availability : null;
   const updatedAt = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date((data as any).updated_at));
-  const recommendation = isOptery && screeningCompleted && !completed ? "Theory saved · practical pending" : decisionLabel(result.decision);
+  const recommendation = isOptery && screeningCompleted && !completed
+    ? "Theory saved · practical pending"
+    : decisionLabel(finalDecision);
   const recommendationText = isOptery && screeningCompleted && !completed
-    ? "The interview screen is saved. Final evaluation should wait until the practical assessment is completed."
-    : result.reasons[0] ?? "Result based on the evidence recorded during the evaluation.";
+    ? "The interview screen is saved. Final evaluation should wait until the practical assessment gate is completed."
+    : finalDecisionReason(candidate.role_slug, result.reasons[0], completed, practicalEvidence);
 
   const theoreticalResult = `${decisionLabel(result.decision)} · Technical ${result.technicalScore?.toFixed(1) ?? "—"}/5 · Ways of working ${result.operatingScore?.toFixed(1) ?? "—"}/5`;
   const practicalResult = !isOptery
     ? "No practical assessment is currently configured for this role."
-    : practicalAverage === null
-      ? `Pending · Project start: ${projectStart}`
-      : `${completed ? "Completed" : "In progress"} · ${practicalAverage.toFixed(1)}/5 average · Project start: ${projectStart}`;
+    : practicalOutcome === "Not evaluated"
+      ? `Pending · Required gate not yet decided · Project start: ${projectStart}`
+      : practicalOutcome === "Fail"
+        ? `Gate: Fail · Do not present regardless of the theoretical score · Project start: ${projectStart}`
+        : `Gate: Pass · Required practical gate passed · Project start: ${projectStart}`;
 
   return (
     <main className={styles.page}>
@@ -132,6 +137,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             <h2>Practical assessment breakdown</h2>
             {isOptery ? (
               <div className={styles.fit}>
+                <div className={styles.row}><span>Overall practical gate</span><span className={`${styles.status} ${practicalOutcome === "Not evaluated" ? styles.pending : practicalOutcome === "Fail" ? styles.negative : ""}`}>{practicalOutcome}</span></div>
                 <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
                 {OPTERY_PRACTICAL.map((criterion) => {
                   const score = practicalScores[criterion.id];
@@ -152,12 +158,12 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           <div className={styles.evidenceGrid}>
             <div className={styles.evidenceCard}>
               <b>Theoretical / interview screen · {theoryStatus}</b>
-              <p><strong>What it measures:</strong> role-specific technical depth, ownership, judgment, communication, autonomy, motivation, and candidate conditions captured during the interview.</p>
+              <p><strong>What it measures:</strong> role-specific technical depth from prior experience, ownership, judgment, communication, autonomy, motivation, and candidate conditions captured during the interview.</p>
               <p><strong>Result:</strong> {theoreticalResult}</p>
             </div>
             <div className={styles.evidenceCard}>
               <b>Practical / live assessment · {practicalStatus}</b>
-              <p><strong>What it measures:</strong> {isOptery ? "ability to start an unfamiliar project quickly, backend/system design, data integrity, distributed-systems reliability, and production debugging/performance through live evidence." : "No separate practical stage is currently defined in this scorecard."}</p>
+              <p><strong>What it measures:</strong> {isOptery ? "live execution on an unfamiliar backend: project start, system design, data integrity, distributed-systems reliability, and production debugging/performance. This stage is a required gate, not an average with the theoretical screen." : "No separate practical stage is currently defined in this scorecard."}</p>
               <p><strong>Result:</strong> {practicalResult}</p>
             </div>
           </div>
@@ -168,7 +174,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
           <div className={styles.evidenceGrid}>
             <div className={styles.evidenceCard}><b>What they solved / demonstrated</b><p>{evidence.__solved?.trim() || "Not recorded."}</p></div>
             <div className={styles.evidenceCard}><b>Where they needed hints or support</b><p>{evidence.__hints?.trim() || "Not recorded."}</p></div>
-            <div className={styles.evidenceCard}><b>What we could not validate</b><p>{evidence.__untested?.trim() || (isOptery && !completed ? "Practical assessment pending." : "Not recorded.")}</p></div>
+            <div className={styles.evidenceCard}><b>What we could not validate</b><p>{evidence.__untested?.trim() || (isOptery && practicalOutcome === "Not evaluated" ? "Practical assessment pending." : "Not recorded.")}</p></div>
           </div>
           {isOptery && OPTERY_PRACTICAL.some((criterion) => practicalEvidence[criterion.id]?.trim()) ? <div className={styles.evidenceGrid} style={{ marginTop: 14 }}>{OPTERY_PRACTICAL.filter((criterion) => practicalEvidence[criterion.id]?.trim()).map((criterion) => <div className={styles.evidenceCard} key={criterion.id}><b>{criterion.label} · practical evidence</b><p>{practicalEvidence[criterion.id]}</p></div>)}</div> : null}
         </section>

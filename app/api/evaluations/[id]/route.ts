@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRole } from "@/lib/scorecards";
 import { evaluateCandidate } from "@/lib/scoring";
+import { finalDecisionReason, resolveFinalDecision } from "@/lib/optery-practical";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import type { Score } from "@/lib/types";
 
@@ -50,6 +51,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const screeningCompleted = payload.screeningCompleted ?? Boolean((assessment as any).screening_completed);
     const completed = payload.completed ?? Boolean((assessment as any).completed);
     const result = evaluateCandidate(role, scores, logistics);
+    const finalDecision = resolveFinalDecision(roleSlug, result.decision, completed, practicalEvidence);
+    const finalReasons = roleSlug === "optery-senior-backend"
+      ? [finalDecisionReason(roleSlug, result.reasons[0], completed, practicalEvidence), ...result.reasons.slice(1)]
+      : result.reasons;
 
     const { data: updated, error: updateError } = await supabase
       .from("assessments")
@@ -63,8 +68,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         technical_score: result.technicalScore,
         operating_score: result.operatingScore,
         overall_score: result.overallScore,
-        decision: result.decision,
-        decision_reasons: result.reasons,
+        decision: finalDecision,
+        decision_reasons: finalReasons,
         screening_completed: screeningCompleted,
         completed,
       })
