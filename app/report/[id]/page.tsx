@@ -16,16 +16,17 @@ const OPTERY_PRACTICAL = [
 ] as const;
 
 function decisionLabel(decision: "Present" | "Hold" | "Reject") {
-  if (decision === "Present") return "Presentar";
-  if (decision === "Reject") return "No presentar";
-  return "En revisión";
+  if (decision === "Present") return "Present";
+  if (decision === "Reject") return "Do not present";
+  return "Hold for review";
 }
 
-function statusFor(score: Score, hardGate?: boolean, minimumScore = 4) {
-  if (score === null || score === undefined) return { label: "Por validar", className: styles.pending };
-  if (hardGate && score < minimumScore) return { label: "No cumple", className: styles.negative };
-  if (score >= 4) return { label: "Evidencia sólida", className: "" };
-  return { label: "Señal mixta", className: styles.pending };
+function practicalScoreAverage(scores: Record<string, Score>) {
+  const values = OPTERY_PRACTICAL
+    .map((criterion) => scores[criterion.id])
+    .filter((value): value is Exclude<Score, null> => value !== null && value !== undefined);
+  if (!values.length) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export default async function CandidateReport({ params }: { params: Promise<{ id: string }> }) {
@@ -60,26 +61,33 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
     .sort((a, b) => Number(scores[b.id]) - Number(scores[a.id]) || b.weight - a.weight)
     .slice(0, 3);
 
-  const fitCriteria = [...criteria]
-    .sort((a, b) => Number(Boolean(b.hardGate)) - Number(Boolean(a.hardGate)) || b.weight - a.weight)
-    .slice(0, 5);
+  const strongLabels = strongest
+    .filter((criterion) => Number(scores[criterion.id]) >= 4)
+    .map((criterion) => criterion.label);
 
-  const pendingQuestions = criteria
-    .filter((criterion) => scores[criterion.id] === null || scores[criterion.id] === undefined || Number(scores[criterion.id]) <= 3)
-    .slice(0, 3)
-    .map((criterion) => criterion.question);
+  const theoryComplete = isOptery ? screeningCompleted || completed : completed;
+  const theoryStatus = theoryComplete ? "Completed" : "In progress";
+  const practicalAverage = practicalScoreAverage(practicalScores);
+  const practicalStatus = !isOptery ? "Not configured" : completed ? "Completed" : "Pending";
+  const projectStart = practicalEvidence.__projectStart || "Not evaluated";
 
-  const strongLabels = strongest.filter((criterion) => Number(scores[criterion.id]) >= 4).map((criterion) => criterion.label);
   const summary = strongLabels.length
-    ? `El screening dejó como señales más fuertes ${strongLabels.slice(0, 3).join(", ")}. Resultado del screening: ${decisionLabel(result.decision).toLowerCase()}, con ${result.technicalScore?.toFixed(1) ?? "—"}/5 en técnico y ${result.operatingScore?.toFixed(1) ?? "—"}/5 en forma de trabajo.${isOptery && !completed ? " La prueba práctica sigue pendiente." : ""}`
-    : `El screening está ${result.decision === "Hold" ? "pendiente de validación suficiente" : "registrado"}.${isOptery && !completed ? " La prueba práctica sigue pendiente." : ""}`;
+    ? `The strongest signals from the interview were ${strongLabels.slice(0, 3).join(", ")}. The theoretical/interview screen currently reads ${decisionLabel(result.decision).toLowerCase()}, with ${result.technicalScore?.toFixed(1) ?? "—"}/5 in technical criteria and ${result.operatingScore?.toFixed(1) ?? "—"}/5 in ways of working.${isOptery && !completed ? " The practical assessment is still pending." : ""}`
+    : `The theoretical/interview screen is ${theoryComplete ? "saved" : "still in progress"}.${isOptery && !completed ? " The practical assessment is still pending." : ""}`;
 
   const availability = typeof logistics.availability === "string" ? logistics.availability : null;
-  const updatedAt = new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(new Date((data as any).updated_at));
-  const recommendation = isOptery && screeningCompleted && !completed ? "Screening guardado" : decisionLabel(result.decision);
+  const updatedAt = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date((data as any).updated_at));
+  const recommendation = isOptery && screeningCompleted && !completed ? "Theory saved · practical pending" : decisionLabel(result.decision);
   const recommendationText = isOptery && screeningCompleted && !completed
-    ? "La parte teórica quedó guardada. La decisión final debe esperar la prueba práctica."
-    : result.reasons[0] ?? "Resultado basado en la evidencia registrada durante la evaluación.";
+    ? "The interview screen is saved. Final evaluation should wait until the practical assessment is completed."
+    : result.reasons[0] ?? "Result based on the evidence recorded during the evaluation.";
+
+  const theoreticalResult = `${decisionLabel(result.decision)} · Technical ${result.technicalScore?.toFixed(1) ?? "—"}/5 · Ways of working ${result.operatingScore?.toFixed(1) ?? "—"}/5`;
+  const practicalResult = !isOptery
+    ? "No practical assessment is currently configured for this role."
+    : practicalAverage === null
+      ? `Pending · Project start: ${projectStart}`
+      : `${completed ? "Completed" : "In progress"} · ${practicalAverage.toFixed(1)}/5 average · Project start: ${projectStart}`;
 
   return (
     <main className={styles.page}>
@@ -87,75 +95,76 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
       <article className={styles.sheet}>
         <header className={styles.top}>
           <div className={styles.brand}><span className={styles.logo}>P</span>PurrfectHire</div>
-          <span className={styles.eyebrow}>Presentación de candidato · confidencial</span>
+          <span className={styles.eyebrow}>Candidate presentation · confidential</span>
         </header>
 
         <div className={styles.hero}>
           <div>
-            <div className={styles.eyebrow}>Scorecard ejecutivo · {updatedAt}</div>
+            <div className={styles.eyebrow}>Executive scorecard · {updatedAt}</div>
             <h1>{candidate.name}</h1>
-            <div className={styles.sub}>{[candidate.current_role, candidate.current_company].filter(Boolean).join(" · ") || "Información actual por confirmar"} · Para <b>{role.role} / {role.client}</b></div>
-            <div className={styles.sub} style={{ marginTop: 8 }}>{[candidate.location, availability].filter(Boolean).join(" · ") || "Ubicación / disponibilidad por confirmar"}{candidate.linkedin_url ? <> · <a href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}>LinkedIn</a></> : null}</div>
+            <div className={styles.sub}>{[candidate.current_role, candidate.current_company].filter(Boolean).join(" · ") || "Current information not confirmed"} · For <b>{role.role} / {role.client}</b></div>
+            <div className={styles.sub} style={{ marginTop: 8 }}>{[candidate.location, availability].filter(Boolean).join(" · ") || "Location / availability not confirmed"}{candidate.linkedin_url ? <> · <a href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}>LinkedIn</a></> : null}</div>
           </div>
           <aside className={styles.decision}>
-            <div className={styles.eyebrow}>Estado / recomendación</div>
+            <div className={styles.eyebrow}>Status / recommendation</div>
             <strong>{recommendation}</strong>
             <span>{recommendationText}</span>
           </aside>
         </div>
 
-        <div className={styles.summary}><b>La lectura en 20 segundos</b>{summary}</div>
+        <div className={styles.summary}><b>20-second read</b>{summary}</div>
 
         <div className={styles.grid}>
           <section className={styles.section}>
-            <h2>Por qué encaja</h2>
+            <h2>Why this candidate fits</h2>
             {strongest.length ? strongest.map((criterion, index) => (
               <div className={styles.proof} key={criterion.id}>
                 <span className={styles.num}>0{index + 1}</span>
-                <div><strong>{criterion.label} · {scores[criterion.id]}/5</strong><p>{evidence[criterion.id]?.trim() || "No se escribió evidencia específica para este criterio; el score proviene del screening realizado."}</p></div>
+                <div>
+                  <strong>{criterion.label} · {scores[criterion.id]}/5</strong>
+                  <p>{evidence[criterion.id]?.trim() || "No criterion-specific evidence was written; this score comes from the completed interview screen."}</p>
+                </div>
               </div>
-            )) : <p className={styles.small}>Todavía no hay criterios evaluados.</p>}
+            )) : <p className={styles.small}>No criteria have been scored yet.</p>}
           </section>
 
           <section className={styles.section}>
-            <h2>Ajuste a la vacante</h2>
-            <div className={styles.fit}>
-              {fitCriteria.map((criterion) => {
-                const status = statusFor(scores[criterion.id], criterion.hardGate, criterion.minimumScore ?? 4);
-                return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${status.className}`}>{status.label}</span></div>;
+            <h2>Theoretical vs practical evaluation</h2>
+            <div className={styles.evidenceGrid}>
+              <div className={styles.evidenceCard}>
+                <b>Theoretical / interview screen · {theoryStatus}</b>
+                <p><strong>What it measures:</strong> role-specific technical depth, ownership, judgment, communication, autonomy, motivation, and candidate conditions captured during the interview.</p>
+                <p><strong>Result:</strong> {theoreticalResult}</p>
+              </div>
+              <div className={styles.evidenceCard}>
+                <b>Practical / live assessment · {practicalStatus}</b>
+                <p><strong>What it measures:</strong> {isOptery ? "ability to start an unfamiliar project quickly, backend/system design, data integrity, distributed-systems reliability, and production debugging/performance through live evidence." : "No separate practical stage is currently defined in this scorecard."}</p>
+                <p><strong>Result:</strong> {practicalResult}</p>
+              </div>
+            </div>
+
+            {isOptery ? <div className={styles.fit} style={{ marginTop: 14 }}>
+              <div className={styles.row}><span>Unfamiliar project running in &lt;3 min</span><span className={`${styles.status} ${projectStart === "Not evaluated" || projectStart === "Sin evaluar" ? styles.pending : projectStart === "Fail" || projectStart === "No pasa" ? styles.negative : ""}`}>{projectStart}</span></div>
+              {OPTERY_PRACTICAL.map((criterion) => {
+                const score = practicalScores[criterion.id];
+                return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Not evaluated" : `${score}/5`}</span></div>;
               })}
-            </div>
-            <div className={styles.questions}>
-              <b style={{ fontSize: 12 }}>Preguntas para la siguiente entrevista</b>
-              <ol>{(pendingQuestions.length ? pendingQuestions : ["Profundizar en el criterio con menor evidencia escrita antes de la siguiente decisión."]).map((question) => <li key={question}>{question}</li>)}</ol>
-            </div>
+            </div> : null}
           </section>
         </div>
 
-        {isOptery ? <section className={styles.evidence}>
-          <h2 style={{ fontSize: 15, marginBottom: 6 }}>Prueba práctica de Optery</h2>
-          <p className={styles.small} style={{ marginBottom: 14 }}>Estado: {completed ? "completada" : "pendiente"}. El screening teórico puede guardarse sin completar esta sección.</p>
-          <div className={styles.fit}>
-            <div className={styles.row}><span>Proyecto desconocido corriendo en &lt;3 min</span><span className={`${styles.status} ${!practicalEvidence.__projectStart || practicalEvidence.__projectStart === "Sin evaluar" ? styles.pending : practicalEvidence.__projectStart === "No pasa" ? styles.negative : ""}`}>{practicalEvidence.__projectStart || "Sin evaluar"}</span></div>
-            {OPTERY_PRACTICAL.map((criterion) => {
-              const score = practicalScores[criterion.id];
-              return <div className={styles.row} key={criterion.id}><span>{criterion.label}</span><span className={`${styles.status} ${score === null || score === undefined ? styles.pending : Number(score) <= 2 ? styles.negative : Number(score) === 3 ? styles.pending : ""}`}>{score === null || score === undefined ? "Sin evaluar" : `${score}/5`}</span></div>;
-            })}
-          </div>
-          {OPTERY_PRACTICAL.some((criterion) => practicalEvidence[criterion.id]?.trim()) ? <div className={styles.evidenceGrid} style={{ marginTop: 14 }}>{OPTERY_PRACTICAL.filter((criterion) => practicalEvidence[criterion.id]?.trim()).map((criterion) => <div className={styles.evidenceCard} key={criterion.id}><b>{criterion.label}</b><p>{practicalEvidence[criterion.id]}</p></div>)}</div> : null}
-        </section> : null}
-
         <section className={styles.evidence}>
-          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Evidencia de la evaluación</h2>
+          <h2 style={{ fontSize: 15, marginBottom: 14 }}>Evaluation evidence</h2>
           <div className={styles.evidenceGrid}>
-            <div className={styles.evidenceCard}><b>Qué resolvió / demostró</b><p>{evidence.__solved?.trim() || "No registrado."}</p></div>
-            <div className={styles.evidenceCard}><b>Dónde necesitó pistas o apoyo</b><p>{evidence.__hints?.trim() || "No registrado."}</p></div>
-            <div className={styles.evidenceCard}><b>Qué no pudimos validar</b><p>{evidence.__untested?.trim() || (isOptery && !completed ? "Prueba práctica pendiente." : "No registrado.")}</p></div>
+            <div className={styles.evidenceCard}><b>What they solved / demonstrated</b><p>{evidence.__solved?.trim() || "Not recorded."}</p></div>
+            <div className={styles.evidenceCard}><b>Where they needed hints or support</b><p>{evidence.__hints?.trim() || "Not recorded."}</p></div>
+            <div className={styles.evidenceCard}><b>What we could not validate</b><p>{evidence.__untested?.trim() || (isOptery && !completed ? "Practical assessment pending." : "Not recorded.")}</p></div>
           </div>
+          {isOptery && OPTERY_PRACTICAL.some((criterion) => practicalEvidence[criterion.id]?.trim()) ? <div className={styles.evidenceGrid} style={{ marginTop: 14 }}>{OPTERY_PRACTICAL.filter((criterion) => practicalEvidence[criterion.id]?.trim()).map((criterion) => <div className={styles.evidenceCard} key={criterion.id}><b>{criterion.label} · practical evidence</b><p>{practicalEvidence[criterion.id]}</p></div>)}</div> : null}
         </section>
 
-        {(data as any).recruiter_notes ? <div className={styles.notes}><b>Notas del recruiter</b><br />{(data as any).recruiter_notes}</div> : null}
-        <footer className={styles.footer}><span>Preparado desde PurrfectHire · Uso interno del cliente</span><span>Estados basados en evidencia disponible; “por validar” no implica descarte.</span></footer>
+        {(data as any).recruiter_notes ? <div className={styles.notes}><b>Recruiter notes</b><br />{(data as any).recruiter_notes}</div> : null}
+        <footer className={styles.footer}><span>Prepared in PurrfectHire · Client/internal use</span><span>Statuses are based on available evidence; “not evaluated” does not imply rejection.</span></footer>
       </article>
     </main>
   );
