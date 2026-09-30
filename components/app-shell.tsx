@@ -11,9 +11,9 @@ export function AppShell({ children, active = "candidates" }: AppShellProps) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link href="/" className="brand" aria-label="PurrfectHire home">
+        <Link href="/" className="brand" aria-label="Purrfect Hire home">
           <span className="brand-mark">P</span>
-          <span>PurrfectHire</span>
+          <span>Purrfect Hire</span>
         </Link>
         <nav className="nav">
           <Link href="/" className={`nav-item ${active === "candidates" ? "nav-item-active" : ""}`}>
