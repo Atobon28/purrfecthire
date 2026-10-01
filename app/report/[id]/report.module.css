@@ -419,11 +419,11 @@
     widows: 3;
   }
 
-  :global(html[data-pdf-mode="theory"]) [data-pdf-section="practical"] {
+  :global(html[data-pdf-mode="theory"]) .pageSheet[data-pdf-section="practical"] {
     display: none !important;
   }
 
-  :global(html[data-pdf-mode="practical"]) [data-pdf-section="theory"] {
+  :global(html[data-pdf-mode="practical"]) .pageSheet[data-pdf-section="theory"] {
     display: none !important;
   }
 
