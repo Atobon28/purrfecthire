@@ -6,6 +6,7 @@ export type ScoreArea = "technical" | "operating";
 export type Criterion = {
   id: string;
   label: string;
+  reportLabel?: string;
   area: ScoreArea;
   weight: number;
   priority: Priority;
