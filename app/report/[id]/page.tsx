@@ -24,7 +24,7 @@ function formatAvailability(value: unknown) {
 }
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeZone: "America/Bogota" }).format(new Date(value));
 }
 
 export default async function CandidateReport({ params }: { params: Promise<{ id: string }> }) {
