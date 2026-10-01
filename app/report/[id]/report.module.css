@@ -12,7 +12,7 @@
   print-color-adjust: exact;
 }
 
-* { box-sizing: border-box; }
+.page * { box-sizing: border-box; }
 
 .toolbar {
   width: 1174px;
@@ -131,20 +131,20 @@
   color: #1d1d1b;
 }
 
-section {
+.page section {
   border-top: 1px solid #e5e5df;
   margin-top: 36px;
   padding-top: 34px;
 }
 
 .sectionHead h2,
-h2 {
+.page h2 {
   font-size: 21px;
   font-weight: 400;
   margin: 12px 0 22px;
 }
 
-h2.solo {
+.page h2.solo {
   margin-top: 0;
 }
 
@@ -334,13 +334,13 @@ h2.solo {
     font-size: 11.5pt;
   }
 
-  section {
+  .page section {
     margin-top: 20pt;
     padding-top: 18pt;
   }
 
   .sectionHead h2,
-  h2 {
+  .page h2 {
     font-size: 14pt;
     margin: 5pt 0 11pt;
   }
@@ -414,7 +414,7 @@ h2.solo {
     page-break-after: avoid;
   }
 
-  p {
+  .page p {
     orphans: 3;
     widows: 3;
   }
