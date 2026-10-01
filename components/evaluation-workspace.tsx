@@ -109,6 +109,16 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
           <p className={styles.question}>{criterion.question}</p>
         </div>
       </div>
+
+      {(criterion.whatWeMeasure || criterion.strongFit || criterion.disqualifyingSignal || criterion.liveWhatWeEvaluate) ? (
+        <div className={styles.rubricGrid}>
+          {criterion.whatWeMeasure ? <div className={styles.rubricBlock}><span>What we measure</span><p>{criterion.whatWeMeasure}</p></div> : null}
+          {criterion.strongFit ? <div className={styles.rubricBlock}><span>Strong fit</span><p>{criterion.strongFit}</p></div> : null}
+          {criterion.disqualifyingSignal ? <div className={styles.rubricBlock}><span>{criterion.area === "technical" ? "Disqualifying signal" : "Does not fit"}</span><p>{criterion.disqualifyingSignal}</p></div> : null}
+          {criterion.liveWhatWeEvaluate ? <div className={styles.rubricBlock}><span>Live coding · what we evaluate</span><p>{criterion.liveWhatWeEvaluate}</p></div> : null}
+        </div>
+      ) : null}
+
       <div className={styles.scoreBlock}>
         <div className={styles.scoreButtons}>
           {[1, 2, 3, 4, 5].map((score) => (
@@ -125,11 +135,11 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
       </label>
       {(criterion.followUps?.length || criterion.strongSignals?.length || criterion.redFlags?.length) ? (
         <details className={styles.details}>
-          <summary>Guide to go deeper</summary>
+          <summary>Interview follow-ups</summary>
           <div className={styles.detailGrid}>
             {criterion.followUps?.length ? <div><strong>Follow-ups</strong>{criterion.followUps.map((item) => <p key={item}>{item}</p>)}</div> : null}
             {criterion.strongSignals?.length ? <div><strong>Strong signals</strong>{criterion.strongSignals.map((item) => <p key={item}>{item}</p>)}</div> : null}
-            {criterion.redFlags?.length ? <div><strong>Red flags</strong>{criterion.redFlags.map((item) => <p key={item}>{item}</p>)}</div> : null}
+            {criterion.redFlags?.length ? <div><strong>Additional red flags</strong>{criterion.redFlags.map((item) => <p key={item}>{item}</p>)}</div> : null}
           </div>
         </details>
       ) : null}
@@ -445,17 +455,22 @@ export function EvaluationWorkspace() {
               <div className={styles.summaryReason}><p>{active.completed ? finalDecisionReason(active.roleSlug, activeResult.reasons[0], active.completed, active.practicalEvidence) : activeResult.reasons[0]}</p></div>
             </section>
 
+            {isOptery ? <div className={styles.stageStrip}>
+              <div><strong>Stage 1 · Cultural session</strong><span>How the candidate works: ownership, building from zero, communication, motivation and autonomy.</span></div>
+              <div><strong>Stage 2 · Technical screening</strong><span>Experience-based production decisions and the reasoning behind them.</span></div>
+              <div><strong>Stage 3 · Practical assessment</strong><span>Live coding on an unfamiliar backend, without AI.</span></div>
+            </div> : null}
             <div className={styles.scaleLegend}><strong>Scale</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Technical</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
-              <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Stage 1 · recruiter screen</span><h2>Ways of working / cultural assessment</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
+              <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
+              <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Ways of working</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
-              <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
-              <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Stage 2 · technical screening · experience-based</span><h2>Technical dimensions</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
+              <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
