@@ -10,7 +10,12 @@ const optery: RoleDefinition = {
   technical: [
     {
       id: "optery-backend-system-design",
-      label: "Backend Engineering & System Design",
+      whatWeMeasure: "Quality of architectural and implementation decisions when Python/Django workflows span permissions, database changes, external services, and competing performance or maintainability requirements.",
+      strongFit: "Compares viable designs against explicit constraints and explains the consequences of each choice through production examples. Demonstrates those decisions in working code, including tests and meaningful edge cases.",
+      disqualifyingSignal: "Confidently asserts incorrect behavior about framework execution, permissions, or transaction boundaries.",
+      liveWhatWeEvaluate: "How the candidate maps the request lifecycle across the API, database and external service, prioritizes a correctness risk, and implements a verified fix with appropriate service and transaction boundaries. The rationale must compare an alternative against the workflow's constraints and failure modes.",
+      label: "Python/Django Backend Engineering & System Design",
+      reportLabel: "Backend Engineering & System Design",
       area: "technical",
       weight: 25,
       priority: "critical",
@@ -35,6 +40,10 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-data-integrity",
+      whatWeMeasure: "Correctness of reasoning about query execution, concurrent updates, and schema changes. For example, diagnosing a slow query, preventing conflicting writes, or migrating a large table while traffic continues.",
+      strongFit: "Identifies the underlying failure mechanism and justifies the appropriate indexing, isolation, locking, or migration strategy. Explains how correctness and performance were checked using query plans, testing, or production observations.",
+      disqualifyingSignal: "An incorrect claim about transactions, locks, or SQL, such as assuming transaction wrapping alone prevents concurrent writes.",
+      liveWhatWeEvaluate: "Prevention of duplicate processing when two workers act on the same request while the external service is slow. The candidate reproduces the overlap and implements database-backed coordination, demonstrating consistent attempts and final state while allowing unrelated requests to proceed independently.",
       label: "Databases & Data Integrity",
       area: "technical",
       weight: 25,
@@ -61,6 +70,10 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-distributed-reliability",
+      whatWeMeasure: "Whether a design preserves the intended business outcome when requests are duplicated, messages arrive late, dependencies fail, or workers terminate between an external action and its confirmation.",
+      strongFit: "Explains where state is persisted, how duplicate work is controlled, and how interrupted workflows recover. Justifies retry, acknowledgement, rate-limiting, and reconciliation decisions across specific failure scenarios.",
+      disqualifyingSignal: "Confidently claims that retries, queues, or local transactions automatically guarantee recovery or prevent duplicate external actions, and cannot account for a failure scenario.",
+      liveWhatWeEvaluate: "Safe recovery when the external service accepts an action but returns a timeout before success is recorded locally. The candidate implements and verifies retries that preserve one external effect and its original reference, and assesses recovery from interrupted processing. Process-death recovery is executed if time permits.",
       label: "Distributed Systems & Reliability",
       area: "technical",
       weight: 25,
@@ -87,6 +100,10 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-debugging-performance",
+      whatWeMeasure: "How effectively the candidate turns production symptoms into testable hypotheses, isolates the responsible system layer, and establishes whether a corrective change worked.",
+      strongFit: "Reconstructs a real investigation from evidence to root cause, distinguishing application, database, and infrastructure bottlenecks. Demonstrates the impact of the fix through latency, error-rate, throughput, or resource measurements and explains recurrence prevention.",
+      disqualifyingSignal: "Confidently presents an unsupported root cause or performance guarantee and maintains it when measurements or query behavior contradict the explanation.",
+      liveWhatWeEvaluate: "Diagnosis and correction of repeated database work in a paginated reporting endpoint. The candidate compares SQL query counts at increasing page sizes, implements an improvement, and verifies unchanged ordering and global totals while accounting for the solution's time and memory costs.",
       label: "Production Debugging & Performance",
       area: "technical",
       weight: 25,
@@ -120,6 +137,9 @@ const optery: RoleDefinition = {
   operating: [
     {
       id: "optery-full-ownership",
+      whatWeMeasure: "Whether the candidate naturally takes responsibility for outcomes, not just for completing the task assigned to them.",
+      strongFit: "Explains situations where they identified a problem, took initiative, drove the solution, handled obstacles, and remained accountable for the final result. They speak in terms of what they personally owned and changed, rather than only describing what \"the team\" did.",
+      disqualifyingSignal: "Primarily describes following instructions, completing assigned tickets, or waiting for others to define the next step.",
       label: "Full Ownership",
       area: "operating",
       weight: 25,
@@ -134,6 +154,9 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-builder-mindset",
+      whatWeMeasure: "Whether the candidate can take an ambiguous problem and turn it into a concrete outcome without needing every step, requirement, or decision predefined.",
+      strongFit: "Has examples of building something from scratch, creating a process that did not exist, solving an undefined problem, or taking an idea from an early stage into a working product or system. Can explain how they made decisions when there was no obvious playbook.",
+      disqualifyingSignal: "Experience is mostly execution within highly defined processes, with limited evidence of creating, improving, or driving something independently.",
       label: "0 → 1 / Builder Mindset",
       area: "operating",
       weight: 20,
@@ -146,6 +169,9 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-communication",
+      whatWeMeasure: "Whether the candidate can communicate technical and professional experiences clearly, structure their thoughts, and adapt their explanation to the person they are speaking with.",
+      strongFit: "Gives clear, structured answers, explains complex situations in a way that is easy to follow, distinguishes their own contribution from the team's, and can go deeper when asked without losing the main point.",
+      disqualifyingSignal: "Gives fragmented or overly vague answers, relies heavily on buzzwords, struggles to explain their own work, or cannot clearly communicate the reasoning behind their decisions.",
       label: "Communication & Ability to Explain",
       area: "operating",
       weight: 20,
@@ -160,6 +186,9 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-motivation",
+      whatWeMeasure: "Whether the candidate's reasons for exploring the opportunity are aligned with what Optery can actually offer, and whether there is a credible reason they would stay engaged through the process and in the role.",
+      strongFit: "Clearly explains why they are looking now, what they want from their next role, what type of environment allows them to perform well, and why Optery's stage, product, ownership level, and working model are relevant to those goals.",
+      disqualifyingSignal: "Motivation is primarily generic, for example \"I'm looking for a new challenge\", or expectations are clearly disconnected from the role, company stage, compensation, or working environment.",
       label: "Motivation & Career Intent",
       area: "operating",
       weight: 15,
@@ -171,6 +200,9 @@ const optery: RoleDefinition = {
     },
     {
       id: "optery-remote-autonomy",
+      whatWeMeasure: "Whether the candidate can operate effectively with limited supervision, communicate proactively, and maintain accountability in a remote environment.",
+      strongFit: "Describes how they organize their work, communicate blockers, make progress without constant direction, and collaborate asynchronously with distributed teams.",
+      disqualifyingSignal: "Depends heavily on frequent supervision, struggles to explain how they manage work independently, or expects a highly structured environment with constant synchronous guidance.",
       label: "Autonomy & Remote Readiness",
       area: "operating",
       weight: 20,
