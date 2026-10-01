@@ -16,6 +16,10 @@ export type Criterion = {
   followUps?: string[];
   strongSignals?: string[];
   redFlags?: string[];
+  whatWeMeasure?: string;
+  strongFit?: string;
+  disqualifyingSignal?: string;
+  liveWhatWeEvaluate?: string;
 };
 
 export type AlternativeGate = {
