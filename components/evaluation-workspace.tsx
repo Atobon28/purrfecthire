@@ -36,21 +36,25 @@ const OPTERY_PRACTICAL = [
     id: "backend-system-design",
     label: "Backend / System Design",
     prompt: "Understand the unfamiliar system, choose what to change, implement the highest-value fix, and explain the trade-offs.",
+    liveWhatWeEvaluate: "How the candidate maps the request lifecycle across the API, database and external service, prioritizes a correctness risk, and implements a verified fix with appropriate service and transaction boundaries. The rationale must compare an alternative against the workflow's constraints and failure modes.",
   },
   {
     id: "data-integrity",
     label: "Databases / Data Integrity",
     prompt: "Identify and resolve the concurrency or data-integrity problem, explaining the transaction / locking / SQL behavior behind the fix.",
+    liveWhatWeEvaluate: "Prevention of duplicate processing when two workers act on the same request while the external service is slow. The candidate reproduces the overlap and implements database-backed coordination, demonstrating consistent attempts and final state while allowing unrelated requests to proceed independently.",
   },
   {
     id: "distributed-reliability",
     label: "Distributed Systems / Reliability",
     prompt: "Handle retries, duplicates, and external-service failures without breaking the intended business outcome.",
+    liveWhatWeEvaluate: "Safe recovery when the external service accepts an action but returns a timeout before success is recorded locally. The candidate implements and verifies retries that preserve one external effect and its original reference, and assesses recovery from interrupted processing. Process-death recovery is executed if time permits.",
   },
   {
     id: "debugging-performance",
     label: "Production Debugging / Performance",
     prompt: "Investigate the slow endpoint, explain the SQL generated behind the ORM, reason about memory and query behavior at ~10M rows, and demonstrate that the fix works.",
+    liveWhatWeEvaluate: "Diagnosis and correction of repeated database work in a paginated reporting endpoint. The candidate compares SQL query counts at increasing page sizes, implements an improvement, and verifies unchanged ordering and global totals while accounting for the solution's time and memory costs.",
   },
 ] as const;
 
@@ -497,6 +501,10 @@ export function EvaluationWorkspace() {
                   <div className={styles.criterionMeta}><span>Practical</span><span>Observe live evidence</span></div>
                   <h3>{criterion.label}</h3>
                   <p className={styles.question}>{criterion.prompt}</p>
+                  <div className={styles.rubricBlock} style={{ marginTop: 14 }}>
+                    <span>Live coding · what we evaluate</span>
+                    <p>{criterion.liveWhatWeEvaluate}</p>
+                  </div>
                   <div className={styles.scoreBlock}><div className={styles.scoreButtons}>{[1,2,3,4,5].map((score) => <button key={score} type="button" onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: score as Score } }))} className={`${styles.scoreButton} ${active.practicalScores[criterion.id] === score ? `${styles.selectedScore} ${scoreTone(score as Score)}` : ""}`}>{score}</button>)}</div><button type="button" className={styles.notEvaluated} onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: null } }))}>Not evaluated</button></div>
                   <label className={styles.field} style={{ marginTop: 14 }}><span>Evidence / hints used</span><input value={active.practicalEvidence[criterion.id] ?? ""} onChange={(event) => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, [criterion.id]: event.target.value } }))} placeholder="What they solved independently, where they needed hints, and what remained untested" /></label>
                 </article>)}</div>
