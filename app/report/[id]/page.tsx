@@ -19,7 +19,7 @@ function formatAvailability(value: unknown) {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   if (!trimmed) return null;
-  if (/^\d+$/.test(trimmed)) return \`\${trimmed} days\`;
+  if (/^\d+$/.test(trimmed)) return `${trimmed} days`;
   return trimmed;
 }
 
@@ -101,15 +101,15 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
           <div className={styles.hero}>
             <div>
-              <div className={styles.eyebrow}>Executive scorecard · \${updatedAt}</div>
+              <div className={styles.eyebrow}>Executive scorecard · ${updatedAt}</div>
               <h1 data-report-candidate>{candidate.name}</h1>
               <div className={styles.sub}>For <b>{role.role} / {role.client}</b></div>
               {(availability || candidate.linkedin_url) ? (
-                <div className={\`\${styles.sub} \${styles.subMeta}\`}>
-                  {availability ? \`Availability: \${availability}\` : null}
+                <div className={`${styles.sub} ${styles.subMeta}`}>
+                  {availability ? `Availability: ${availability}` : null}
                   {availability && candidate.linkedin_url ? " · " : null}
                   {candidate.linkedin_url ? (
-                    <a href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : \`https://\${candidate.linkedin_url}\`}>LinkedIn</a>
+                    <a href={candidate.linkedin_url.startsWith("http") ? candidate.linkedin_url : `https://${candidate.linkedin_url}`}>LinkedIn</a>
                   ) : null}
                 </div>
               ) : null}
@@ -133,7 +133,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
                 <p>{summary}</p>
               </div>
 
-              <div className={\`\${styles.card} \${styles.result}\`}>
+              <div className={`${styles.card} ${styles.result}`}>
                 <b>Technical assessment result</b>
                 <ul>
                   <li>Overall practical gate <span className={styles.pass}>{practicalOutcome}</span></li>
@@ -144,10 +144,10 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
 
             <div className={styles.breakdown}>
               <div className={styles.eyebrow}>Practical assessment breakdown · Observable evidence</div>
-              <div className={\`\${styles.evidenceGrid} \${styles.four}\`}>
+              <div className={`${styles.evidenceGrid} ${styles.four}`}>
                 {practicalItems.map((item) => (
                   <div className={styles.card} key={item.id}>
-                    <b>Practical · {item.label}{item.score !== null && item.score !== undefined ? \` · \${item.score}/5\` : ""}</b>
+                    <b>Practical · {item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
                     <p>{item.evidence || "No dimension-specific evidence was recorded."}</p>
                   </div>
                 ))}
@@ -166,7 +166,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             <div className={styles.evidenceGrid}>
               {technicalScreeningItems.map((item) => (
                 <div className={styles.card} key={item.id}>
-                  <b>Theoretical · {item.label}{item.score !== null && item.score !== undefined ? \` · \${item.score}/5\` : ""}</b>
+                  <b>Theoretical · {item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
                   <p>{item.evidence || "No technical-screening evidence was recorded."}</p>
                 </div>
               ))}
@@ -181,7 +181,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
             <div className={styles.evidenceGrid}>
               {culturalItems.map((item) => (
                 <div className={styles.card} key={item.id}>
-                  <b>{item.label}{item.score !== null && item.score !== undefined ? \` · \${item.score}/5\` : ""}</b>
+                  <b>{item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
                   <p>{item.evidence || "No cultural evidence was recorded."}</p>
                 </div>
               ))}
