@@ -1,1 +1,484 @@
-.page{min-height:100vh;background:#f6f6f2;padding:32px;color:#1d1d1b}.toolbar{max-width:940px;margin:0 auto 14px;display:flex;justify-content:flex-end}.sheet{max-width:940px;margin:auto;background:#fff;border:1px solid #deded8;border-radius:22px;padding:42px 48px;box-shadow:0 14px 40px #2020190a}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e9e9e4;padding-bottom:22px}.brand{font-weight:800;font-size:14px;display:flex;align-items:center;gap:9px}.logo{display:block;width:30px;height:30px;border-radius:50%;object-fit:cover;flex:0 0 auto}.eyebrow{font-size:10px;letter-spacing:1.3px;color:#898982;font-weight:800;text-transform:uppercase}.hero{display:flex;justify-content:space-between;gap:24px;padding:30px 0 25px}.hero h1{font-size:34px;letter-spacing:-1.5px;margin:7px 0}.sub{color:#777770;font-size:13px;line-height:1.5}.decision{width:240px;background:#1e1e1c;color:#fff;border-radius:15px;padding:18px}.decision .eyebrow{color:#aaa}.decision strong{display:block;font-size:18px;margin:11px 0 7px}.decision span{font-size:12px;line-height:1.45;color:#d0d0ca}.summary{border:1px solid #e4e4dd;background:#fafaf7;border-radius:14px;padding:19px 21px;font-size:15px;line-height:1.5}.summary b{display:block;font-size:10px;letter-spacing:1px;color:#777770;text-transform:uppercase;margin-bottom:8px}.grid{display:grid;grid-template-columns:1.5fr 1fr;gap:26px;margin-top:28px}.section h2{font-size:15px;letter-spacing:-.2px;margin:0 0 15px}.proof{border-top:1px solid #ecece7;padding:13px 0;display:grid;grid-template-columns:29px 1fr;gap:10px}.proof:first-of-type{border-top:0}.num{font-weight:800;color:#9b9b92;font-size:11px}.proof strong{font-size:13px}.proof p,.small{font-size:12px;line-height:1.5;color:#74746d;margin:4px 0 0}.fit{border:1px solid #e6e6df;border-radius:13px;padding:16px 18px}.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid #ecece7;font-size:12px}.row:last-child{border:0}.status{font-size:10px;font-weight:800;border-radius:99px;padding:6px 8px;white-space:nowrap;background:#e8f2e9;color:#28613d}.pending{background:#f5efe1;color:#86602f}.negative{background:#f7eaea;color:#874343}.questions{margin-top:22px;background:#f5f5f1;border-radius:13px;padding:18px}.questions ol{margin:11px 0 0;padding-left:18px;font-size:12px;line-height:1.55}.questions li{margin:7px 0}.evidence{margin-top:28px;border-top:1px solid #e9e9e4;padding-top:22px}.evidenceGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}.evidenceCard{background:#fafaf7;border:1px solid #e7e7e1;border-radius:12px;padding:14px}.evidenceCard b{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#888880;margin-bottom:7px}.evidenceCard p{font-size:12px;line-height:1.5;color:#676761;margin:0}.evidenceCard p strong{color:#3d3d39}.keepTogether{break-inside:avoid}.notes{margin-top:20px;padding:16px 18px;border-left:3px solid #d9d9d2;background:#fbfbf8;font-size:12px;line-height:1.55;color:#666660}.footer{display:flex;justify-content:flex-start;gap:20px;border-top:1px solid #e9e9e4;margin-top:27px;padding-top:15px;font-size:10px;color:#92928b}.assessment{margin-top:28px;border-top:1px solid #e9e9e4;padding-top:22px}.assessmentHeading{margin-bottom:14px}.assessmentHeading h2{font-size:18px;letter-spacing:-.35px;margin:6px 0 0}.assessmentGrid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;align-items:start}.miniHeading{font-size:13px;font-weight:650;margin:0 0 10px}.assessmentGrid .evidenceCard{min-height:100%}@media print{.page{padding:0;background:white}.toolbar{display:none}.sheet{border:0;box-shadow:none;border-radius:0;max-width:none;padding:15mm 16mm}.hero{padding:24px 0 20px}.grid{margin-top:22px}.evidence,.assessment{margin-top:22px;padding-top:18px}:global(html[data-pdf-mode="theory"]) [data-pdf-section="practical"],:global(html[data-pdf-mode="theory"]) [data-pdf-section="full-only"]{display:none!important}:global(html[data-pdf-mode="practical"]) [data-pdf-section="theory"],:global(html[data-pdf-mode="practical"]) [data-pdf-section="full-only"]{display:none!important}:global(html[data-pdf-mode="theory"]) .grid,:global(html[data-pdf-mode="practical"]) .grid{grid-template-columns:1fr}.evidenceCard,.decision,.summary,.fit,.proof,.keepTogether,.footer,.assessment{break-inside:avoid}.evidence>h2,.assessmentHeading{break-after:avoid}.section,.evidence{break-inside:auto}@page{size:A4;margin:0}}@media(max-width:680px){.page{padding:10px}.sheet{padding:23px}.hero,.grid,.assessmentGrid{display:block}.decision{width:auto;margin-top:20px}.hero h1{font-size:29px}.grid>.section+.section,.assessmentGrid>div+div{margin-top:25px}.evidenceGrid{grid-template-columns:1fr}}
+@import url("https://fonts.googleapis.com/css2?family=Fira+Sans:wght@500;600;700&display=swap");
+
+.page {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: 18px 0 40px;
+  background: #f3f3ef;
+  color: #1d1d1b;
+  font-family: "Segoe UI", system-ui, -apple-system, Helvetica, Arial, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.page * { box-sizing: border-box; }
+
+.toolbar {
+  width: 1174px;
+  margin: 0 auto 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sheet {
+  width: 1174px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e5df;
+  border-radius: 26px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.pageSheet {
+  padding: 40px 60px 58px;
+  break-after: page;
+  page-break-after: always;
+}
+
+.pageSheet:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.eyebrow,
+.card b,
+.summary b,
+.result b {
+  font-family: "Fira Sans", "Segoe UI", system-ui, sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7c7c74;
+}
+
+.eyebrow { font-size: 13.5px; }
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 26px;
+  border-bottom: 1px solid #e5e5df;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  font-family: "Fira Sans", "Segoe UI", system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.brandImage {
+  width: 38px;
+  height: 38px;
+  display: block;
+  object-fit: contain;
+}
+
+.hero {
+  padding: 40px 0 30px;
+}
+
+.hero h1 {
+  font-size: 42px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  margin: 14px 0 20px;
+  line-height: 1.1;
+}
+
+.sub {
+  font-size: 15.5px;
+  color: #6b6b65;
+  line-height: 1.4;
+}
+
+.sub b {
+  color: #6b6b65;
+  font-weight: 600;
+}
+
+.subMeta {
+  margin-top: 12px;
+}
+
+.sub a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.summary {
+  background: #f8f8f4;
+  border: 1px solid #e5e5df;
+  border-radius: 16px;
+  padding: 24px 26px;
+}
+
+.summary b {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+.summary p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.5;
+  color: #1d1d1b;
+}
+
+.page section {
+  border-top: 1px solid #e5e5df;
+  margin-top: 36px;
+  padding-top: 34px;
+}
+
+.sectionHead h2,
+.page h2 {
+  font-size: 21px;
+  font-weight: 400;
+  margin: 12px 0 22px;
+}
+
+.page h2.solo {
+  margin-top: 0;
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.card {
+  background: #f8f8f4;
+  border: 1px solid #e5e5df;
+  border-radius: 14px;
+  padding: 20px 18px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.card b {
+  display: block;
+  font-size: 13.5px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.card p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #4d4d48;
+}
+
+.result ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.result li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  color: #4d4d48;
+  line-height: 1.4;
+  padding: 5px 0;
+}
+
+.result li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #7c7c74;
+  flex: none;
+}
+
+.result .pass {
+  margin-left: auto;
+  background: #e6efe3;
+  color: #24502c;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.breakdown {
+  margin-top: 28px;
+}
+
+.breakdown .eyebrow {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.four {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.notes {
+  margin-top: 22px;
+  padding: 16px 18px;
+  border: 1px solid #e5e5df;
+  border-radius: 14px;
+  background: #f8f8f4;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #4d4d48;
+}
+
+.notes b {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.pageSheet footer {
+  margin-top: 34px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e5df;
+  font-size: 13px;
+  color: #6b6b65;
+}
+
+@media print {
+  .page {
+    padding: 0;
+    background: #fff;
+  }
+
+  .toolbar {
+    display: none;
+  }
+
+  .sheet {
+    width: auto;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .pageSheet {
+    padding: 13mm 14mm 12mm;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .pageSheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .top {
+    padding-bottom: 12pt;
+  }
+
+  .brand {
+    font-size: 12.5pt;
+    gap: 7pt;
+  }
+
+  .brandImage {
+    width: 25pt;
+    height: 25pt;
+  }
+
+  .eyebrow {
+    font-size: 7.5pt;
+  }
+
+  .hero {
+    padding: 20pt 0 16pt;
+  }
+
+  .hero h1 {
+    font-size: 29pt;
+    margin: 7pt 0 11pt;
+  }
+
+  .sub {
+    font-size: 10pt;
+  }
+
+  .subMeta {
+    margin-top: 6pt;
+  }
+
+  .summary {
+    padding: 13pt 15pt;
+    border-radius: 10pt;
+  }
+
+  .summary b {
+    font-size: 7.5pt;
+    margin-bottom: 7pt;
+  }
+
+  .summary p {
+    font-size: 11.5pt;
+  }
+
+  .page section {
+    margin-top: 20pt;
+    padding-top: 18pt;
+  }
+
+  .sectionHead h2,
+  .page h2 {
+    font-size: 14pt;
+    margin: 5pt 0 11pt;
+  }
+
+  .overview,
+  .evidenceGrid {
+    gap: 8pt;
+  }
+
+  .four {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .card {
+    padding: 11pt 12pt;
+    border-radius: 9pt;
+  }
+
+  .card b {
+    font-size: 7.5pt;
+    margin-bottom: 6pt;
+  }
+
+  .card p {
+    font-size: 9.5pt;
+    line-height: 1.5;
+  }
+
+  .result li {
+    font-size: 9.5pt;
+    padding: 3pt 0;
+    gap: 6pt;
+  }
+
+  .result li::before {
+    width: 3.5pt;
+    height: 3.5pt;
+  }
+
+  .result .pass {
+    font-size: 7.5pt;
+    padding: 2pt 7pt;
+  }
+
+  .breakdown {
+    margin-top: 16pt;
+  }
+
+  .breakdown .eyebrow {
+    margin-bottom: 8pt;
+  }
+
+  .pageSheet footer {
+    margin-top: 20pt;
+    padding-top: 10pt;
+    font-size: 7.5pt;
+  }
+
+  .card,
+  .summary,
+  .hero,
+  .top,
+  .overview {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .sectionHead,
+  .breakdown .eyebrow {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .page p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  :global(html[data-pdf-mode="theory"]) [data-pdf-section="practical"] {
+    display: none !important;
+  }
+
+  :global(html[data-pdf-mode="practical"]) [data-pdf-section="theory"] {
+    display: none !important;
+  }
+
+  :global(html[data-pdf-mode="theory"]) .sheet,
+  :global(html[data-pdf-mode="practical"]) .sheet {
+    border-radius: 0;
+  }
+
+  @page {
+    margin: 0;
+  }
+}
+
+@media (max-width: 1200px) {
+  .toolbar,
+  .sheet {
+    width: calc(100% - 32px);
+  }
+
+  .pageSheet {
+    padding-left: 40px;
+    padding-right: 40px;
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 10px;
+  }
+
+  .toolbar,
+  .sheet {
+    width: 100%;
+  }
+
+  .sheet {
+    border-radius: 18px;
+  }
+
+  .pageSheet {
+    padding: 28px 22px 40px;
+  }
+
+  .top {
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .hero h1 {
+    font-size: 34px;
+  }
+
+  .overview,
+  .evidenceGrid,
+  .four {
+    grid-template-columns: 1fr;
+  }
+}

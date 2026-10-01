@@ -6,6 +6,7 @@ export type ScoreArea = "technical" | "operating";
 export type Criterion = {
   id: string;
   label: string;
+  reportLabel?: string;
   area: ScoreArea;
   weight: number;
   priority: Priority;
@@ -16,6 +17,10 @@ export type Criterion = {
   followUps?: string[];
   strongSignals?: string[];
   redFlags?: string[];
+  whatWeMeasure?: string;
+  strongFit?: string;
+  disqualifyingSignal?: string;
+  liveWhatWeEvaluate?: string;
 };
 
 export type AlternativeGate = {

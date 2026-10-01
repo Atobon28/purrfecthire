@@ -36,21 +36,25 @@ const OPTERY_PRACTICAL = [
     id: "backend-system-design",
     label: "Backend / System Design",
     prompt: "Understand the unfamiliar system, choose what to change, implement the highest-value fix, and explain the trade-offs.",
+    liveWhatWeEvaluate: "How the candidate maps the request lifecycle across the API, database and external service, prioritizes a correctness risk, and implements a verified fix with appropriate service and transaction boundaries. The rationale must compare an alternative against the workflow's constraints and failure modes.",
   },
   {
     id: "data-integrity",
     label: "Databases / Data Integrity",
     prompt: "Identify and resolve the concurrency or data-integrity problem, explaining the transaction / locking / SQL behavior behind the fix.",
+    liveWhatWeEvaluate: "Prevention of duplicate processing when two workers act on the same request while the external service is slow. The candidate reproduces the overlap and implements database-backed coordination, demonstrating consistent attempts and final state while allowing unrelated requests to proceed independently.",
   },
   {
     id: "distributed-reliability",
     label: "Distributed Systems / Reliability",
     prompt: "Handle retries, duplicates, and external-service failures without breaking the intended business outcome.",
+    liveWhatWeEvaluate: "Safe recovery when the external service accepts an action but returns a timeout before success is recorded locally. The candidate implements and verifies retries that preserve one external effect and its original reference, and assesses recovery from interrupted processing. Process-death recovery is executed if time permits.",
   },
   {
     id: "debugging-performance",
     label: "Production Debugging / Performance",
     prompt: "Investigate the slow endpoint, explain the SQL generated behind the ORM, reason about memory and query behavior at ~10M rows, and demonstrate that the fix works.",
+    liveWhatWeEvaluate: "Diagnosis and correction of repeated database work in a paginated reporting endpoint. The candidate compares SQL query counts at increasing page sizes, implements an improvement, and verifies unchanged ordering and global totals while accounting for the solution's time and memory costs.",
   },
 ] as const;
 
@@ -109,6 +113,16 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
           <p className={styles.question}>{criterion.question}</p>
         </div>
       </div>
+
+      {(criterion.whatWeMeasure || criterion.strongFit || criterion.disqualifyingSignal || criterion.liveWhatWeEvaluate) ? (
+        <div className={styles.rubricGrid}>
+          {criterion.whatWeMeasure ? <div className={styles.rubricBlock}><span>What we measure</span><p>{criterion.whatWeMeasure}</p></div> : null}
+          {criterion.strongFit ? <div className={styles.rubricBlock}><span>Strong fit</span><p>{criterion.strongFit}</p></div> : null}
+          {criterion.disqualifyingSignal ? <div className={styles.rubricBlock}><span>{criterion.area === "technical" ? "Disqualifying signal" : "Does not fit"}</span><p>{criterion.disqualifyingSignal}</p></div> : null}
+          {criterion.liveWhatWeEvaluate ? <div className={styles.rubricBlock}><span>Live coding · what we evaluate</span><p>{criterion.liveWhatWeEvaluate}</p></div> : null}
+        </div>
+      ) : null}
+
       <div className={styles.scoreBlock}>
         <div className={styles.scoreButtons}>
           {[1, 2, 3, 4, 5].map((score) => (
@@ -125,11 +139,11 @@ function CriterionCard({ criterion, value, evidence, onChange, onEvidenceChange 
       </label>
       {(criterion.followUps?.length || criterion.strongSignals?.length || criterion.redFlags?.length) ? (
         <details className={styles.details}>
-          <summary>Guide to go deeper</summary>
+          <summary>Interview follow-ups</summary>
           <div className={styles.detailGrid}>
             {criterion.followUps?.length ? <div><strong>Follow-ups</strong>{criterion.followUps.map((item) => <p key={item}>{item}</p>)}</div> : null}
             {criterion.strongSignals?.length ? <div><strong>Strong signals</strong>{criterion.strongSignals.map((item) => <p key={item}>{item}</p>)}</div> : null}
-            {criterion.redFlags?.length ? <div><strong>Red flags</strong>{criterion.redFlags.map((item) => <p key={item}>{item}</p>)}</div> : null}
+            {criterion.redFlags?.length ? <div><strong>Additional red flags</strong>{criterion.redFlags.map((item) => <p key={item}>{item}</p>)}</div> : null}
           </div>
         </details>
       ) : null}
@@ -445,17 +459,22 @@ export function EvaluationWorkspace() {
               <div className={styles.summaryReason}><p>{active.completed ? finalDecisionReason(active.roleSlug, activeResult.reasons[0], active.completed, active.practicalEvidence) : activeResult.reasons[0]}</p></div>
             </section>
 
+            {isOptery ? <div className={styles.stageStrip}>
+              <div><strong>Stage 1 · Cultural session</strong><span>How the candidate works: ownership, building from zero, communication, motivation and autonomy.</span></div>
+              <div><strong>Stage 2 · Technical screening</strong><span>Experience-based production decisions and the reasoning behind them.</span></div>
+              <div><strong>Stage 3 · Practical assessment</strong><span>Live coding on an unfamiliar backend, without AI.</span></div>
+            </div> : null}
             <div className={styles.scaleLegend}><strong>Scale</strong><span>1 Poor</span><span>2 Weak</span><span>3 Mixed</span><span>4 Strong</span><span>5 Exceptional</span></div>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Technical</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
-              <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Stage 1 · recruiter screen</span><h2>Ways of working / cultural assessment</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
+              <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
+              <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
-              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Theoretical screen · experience-based</span><h2>Ways of working</h2></div><span>{activeResult.operatingCoverage}% evaluated</span></div>
-              <p className={styles.sectionHelper}>Only observable, job-relevant behaviors such as ownership, autonomy, communication, and collaboration.</p>
-              <div className={styles.criteriaStack}>{activeRole.operating.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
+              <div className={styles.sectionHeader}><div><span className={styles.eyebrow}>Stage 2 · technical screening · experience-based</span><h2>Technical dimensions</h2></div><span>{activeResult.technicalCoverage}% evaluated</span></div>
+              <div className={styles.criteriaStack}>{activeRole.technical.map((criterion) => <CriterionCard key={criterion.id} criterion={criterion} value={active.scores[criterion.id] ?? null} evidence={active.evidence[criterion.id] ?? ""} onChange={(score) => updateTheory((current) => ({ ...current, scores: { ...current.scores, [criterion.id]: score } }))} onEvidenceChange={(value) => updateTheory((current) => ({ ...current, evidence: { ...current.evidence, [criterion.id]: value } }))} />)}</div>
             </section>
 
             <section className={styles.section}>
@@ -482,6 +501,10 @@ export function EvaluationWorkspace() {
                   <div className={styles.criterionMeta}><span>Practical</span><span>Observe live evidence</span></div>
                   <h3>{criterion.label}</h3>
                   <p className={styles.question}>{criterion.prompt}</p>
+                  <div className={styles.rubricBlock} style={{ marginTop: 14 }}>
+                    <span>Live coding · what we evaluate</span>
+                    <p>{criterion.liveWhatWeEvaluate}</p>
+                  </div>
                   <div className={styles.scoreBlock}><div className={styles.scoreButtons}>{[1,2,3,4,5].map((score) => <button key={score} type="button" onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: score as Score } }))} className={`${styles.scoreButton} ${active.practicalScores[criterion.id] === score ? `${styles.selectedScore} ${scoreTone(score as Score)}` : ""}`}>{score}</button>)}</div><button type="button" className={styles.notEvaluated} onClick={() => updatePractical((current) => ({ ...current, practicalScores: { ...current.practicalScores, [criterion.id]: null } }))}>Not evaluated</button></div>
                   <label className={styles.field} style={{ marginTop: 14 }}><span>Evidence / hints used</span><input value={active.practicalEvidence[criterion.id] ?? ""} onChange={(event) => updatePractical((current) => ({ ...current, practicalEvidence: { ...current.practicalEvidence, [criterion.id]: event.target.value } }))} placeholder="What they solved independently, where they needed hints, and what remained untested" /></label>
                 </article>)}</div>
