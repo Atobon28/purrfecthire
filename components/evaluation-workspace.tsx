@@ -8,7 +8,10 @@ import { finalDecisionReason, normalizePracticalOutcome, resolveFinalDecision } 
 import type { Criterion, Score } from "@/lib/types";
 import styles from "./evaluation-workspace.module.css";
 
-const evaluationRoles = roles.filter((role) => role.slug === "optery-senior-backend" || role.slug === "examen-bdr");
+const evaluationRoleSlugs = ["optery-senior-backend", "examen-bdr"] as const;
+const evaluationRoles = evaluationRoleSlugs
+  .map((slug) => roles.find((role) => role.slug === slug))
+  .filter((role): role is NonNullable<typeof role> => Boolean(role));
 
 type SavedEvaluation = {
   id: string;
