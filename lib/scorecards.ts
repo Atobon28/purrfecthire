@@ -592,7 +592,267 @@ export const roles: RoleDefinition[] = [
         placeholder: "e.g. 30 days",
       },
     ],
+  },,
+
+  {
+    slug: "examen-bdr",
+    client: "Examen",
+    role: "Business Development Representative",
+    summary:
+      "Early commercial BDR focused on outbound execution, building pipeline from zero, qualifying commercial real estate accounts, and improving quickly through feedback.",
+    technical: [
+      {
+        id: "examen-lead-qualification",
+        label: "Lead Qualification",
+        area: "technical",
+        weight: 33.33,
+        priority: "high",
+        question:
+          "Walk me through how you would decide which accounts deserve a touch today and which ones you would leave aside.",
+        followUps: [
+          "What makes a signal recent enough to act on?",
+          "How would you verify that the contact can actually make or influence the decision?",
+          "What would make you disqualify an account?",
+        ],
+        whatWeMeasure:
+          "Which accounts deserve a touch today: the firm has the problem, the signal is recent, and the contact decides.",
+        strongFit:
+          "Ranks by current pain rather than size or brand, and spots stale signals, departed contacts and out-of-profile firms.",
+        disqualifyingSignal:
+          "Treats any news as a buying signal, or keeps an out-of-profile account after the context rules it out.",
+        liveWhatWeEvaluate:
+          "Rank five lead cards, choose two, and explain what you would check before touching the rest.",
+      },
+      {
+        id: "examen-prospecting-zero",
+        label: "Prospecting From Zero",
+        area: "technical",
+        weight: 33.33,
+        priority: "high",
+        question:
+          "If you joined as the first commercial hire with no dialer, data or CRM, what would you do during your first week?",
+        followUps: [
+          "How would you build your first 20 names without paid tools?",
+          "How would you learn from the founders' past deals?",
+          "How would you track every touch?",
+        ],
+        whatWeMeasure:
+          "Building outbound as the first commercial hire, with no dialer, data or CRM.",
+        strongFit:
+          "Learns from the founders' past deals, builds the first list from free sources, tracks every touch, and starts reaching out in week one.",
+        disqualifyingSignal:
+          "Waits for tools, buys a list as the plan, or researches all week without reaching out.",
+        liveWhatWeEvaluate:
+          "Explain what you would do this week with no dialer, data or CRM, then build the first 20 names using free sources and describe how you would track the work.",
+      },
+      {
+        id: "examen-outbound-writing",
+        label: "Outbound Writing",
+        area: "technical",
+        weight: 33.34,
+        priority: "critical",
+        question:
+          "Write a first outbound message to your top lead using one real detail about the firm and one concrete ask.",
+        followUps: [
+          "What detail made you choose this opening?",
+          "What problem are you framing for the prospect?",
+          "How would you improve the message after feedback?",
+        ],
+        whatWeMeasure:
+          "Short, specific outreach a principal would answer, and how it improves after feedback.",
+        strongFit:
+          "Opens with a real detail about the firm, frames the prospect's problem, ends with one concrete ask, and produces a clearly better rewrite.",
+        disqualifyingSignal:
+          "Generic opening, product pitch, no clear ask, or a rewrite identical to the first draft.",
+        liveWhatWeEvaluate:
+          "Write a first message under 60 words to the top lead, then rewrite it after one piece of feedback.",
+      },
+    ],
+    operating: [
+      {
+        id: "examen-persistence",
+        label: "Persistence",
+        area: "operating",
+        weight: 14.29,
+        priority: "critical",
+        question:
+          "Tell me about a time you kept going after repeated rejection. What did you personally change to improve the result?",
+        followUps: [
+          "How many attempts did you make?",
+          "What did you change in your approach?",
+          "What happened afterward?",
+        ],
+        strongSignals: [
+          "Pushes through rejection",
+          "Takes ownership",
+          "Adapts tactics to improve results",
+        ],
+        redFlags: [
+          "Gives up or blames the market after rejection",
+          "Cannot describe a change in tactics",
+        ],
+        whatWeMeasure:
+          "How the candidate responds to rejection, takes ownership, and adapts tactics to improve results.",
+        strongFit:
+          "Pushes through rejection, takes ownership, and adapts tactics to improve results.",
+        disqualifyingSignal:
+          "Gives up or blames the market after rejection, with no example of changing tactics.",
+      },
+      {
+        id: "examen-volume-capacity",
+        label: "Volume & Capacity",
+        area: "operating",
+        weight: 14.29,
+        priority: "high",
+        question:
+          "What outbound volume have you personally sustained in a normal day or week, and how did you connect activity to results?",
+        followUps: [
+          "How many calls and emails did you typically make?",
+          "How did that activity translate into meetings or pipeline?",
+          "What did you do when volume increased?",
+        ],
+        whatWeMeasure:
+          "Whether the candidate can sustain high outbound volume and connect activity to meetings, pipeline, and measurable results.",
+        strongFit:
+          "Demonstrates high outbound volume and connects activity to meetings, pipeline, and measurable results.",
+        disqualifyingSignal:
+          "Cannot give daily activity numbers, or activity is never tied to meetings or results.",
+      },
+      {
+        id: "examen-coachable",
+        label: "Coachable",
+        area: "operating",
+        weight: 14.29,
+        priority: "critical",
+        question:
+          "Tell me about feedback that changed how you sold. What did you change and what happened next?",
+        followUps: [
+          "What was the feedback?",
+          "How quickly did you apply it?",
+          "What changed in your results or behavior?",
+        ],
+        strongSignals: [
+          "Welcomes feedback",
+          "Applies it quickly",
+          "Shows measurable or observable improvement",
+        ],
+        redFlags: [
+          "Defends or explains away feedback",
+          "Cannot give an example of changing after feedback",
+        ],
+        whatWeMeasure:
+          "Whether the candidate welcomes feedback, applies it immediately, and demonstrates clear improvement.",
+        strongFit:
+          "Welcomes feedback, applies it immediately, and demonstrates clear improvement.",
+        disqualifyingSignal:
+          "Defends or explains away feedback, with no example of changing after it.",
+      },
+      {
+        id: "examen-presence",
+        label: "Presence",
+        area: "operating",
+        weight: 14.29,
+        priority: "high",
+        question:
+          "Tell me about a conversation with a senior prospect where you had to earn attention without rushing into a pitch.",
+        followUps: [
+          "What did you ask first?",
+          "How did you adapt to the prospect?",
+          "What was the outcome?",
+        ],
+        whatWeMeasure:
+          "Whether the candidate communicates clearly, confidently and concisely with senior prospects.",
+        strongFit:
+          "Communicates clearly, confidently, and concisely with senior prospects.",
+        disqualifyingSignal:
+          "Rambles, rushes, or pitches before understanding the prospect.",
+      },
+      {
+        id: "examen-learning-speed",
+        label: "Learning Speed",
+        area: "operating",
+        weight: 14.29,
+        priority: "high",
+        question:
+          "Tell me about a time you had to learn a new product or market quickly and turn that learning into better sales execution.",
+        followUps: [
+          "What was new to you?",
+          "How did you ramp up?",
+          "What changed in your execution?",
+        ],
+        whatWeMeasure:
+          "Whether the candidate learns new products and markets quickly, applies feedback, and improves through iteration.",
+        strongFit:
+          "Learns new products and markets quickly, applies feedback, and improves through iteration.",
+        disqualifyingSignal:
+          "No example of ramping up on a new product or market; improvement is only claimed.",
+      },
+      {
+        id: "examen-cre-interest",
+        label: "CRE Interest",
+        area: "operating",
+        weight: 14.29,
+        priority: "high",
+        question:
+          "What interests you about commercial real estate, and what do you understand about the people Examen sells to?",
+        followUps: [
+          "Why this market rather than another sales vertical?",
+          "Who do you think the buyer is?",
+          "What would you want to learn first?",
+        ],
+        whatWeMeasure:
+          "Whether the candidate shows genuine interest in commercial real estate and understands the target customer.",
+        strongFit:
+          "Shows genuine interest in commercial real estate and understands the target customer.",
+        disqualifyingSignal:
+          "No curiosity about the industry or buyer; CRE is just another vertical to them.",
+      },
+      {
+        id: "examen-logistics-fit",
+        label: "Logistics Fit",
+        area: "operating",
+        weight: 14.26,
+        priority: "high",
+        question:
+          "What setup and schedule would allow you to perform well in a full-time, in-person BDR role in San Francisco?",
+        followUps: [
+          "What is your expected start date?",
+          "Are there any schedule constraints we should know about?",
+          "What would you need to make the in-person setup work?",
+        ],
+        whatWeMeasure:
+          "Whether the candidate can meet the San Francisco in-person setup, schedule, compensation, and start-date requirements.",
+        strongFit:
+          "Confirms SF in-person availability, schedule, compensation, and start date.",
+        disqualifyingSignal:
+          "Outside the Bay Area with no move date, cannot commit to full-time in person, or compensation and start date do not fit.",
+      },
+    ],
+    logistics: [
+      {
+        id: "sfInPerson",
+        label: "San Francisco in-person, full time, US business hours",
+        type: "boolean",
+        requiredForPresent: true,
+        rejectIfFalse: true,
+      },
+      {
+        id: "compensation",
+        label: "Compensation expectations / salary range",
+        type: "text",
+        requiredForPresent: true,
+        placeholder: "Expected base / total compensation",
+      },
+      {
+        id: "availability",
+        label: "Availability / start date",
+        type: "text",
+        requiredForPresent: true,
+        placeholder: "e.g. Available immediately / 2 weeks",
+      },
+    ],
   },
+
 ];
 
 export function getRole(slug: string) {
