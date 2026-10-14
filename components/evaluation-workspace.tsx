@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, ExternalLink, FileText, LoaderCircle, Plus, RefreshCw, RotateCcw, Save } from "lucide-react";
 import { evaluateCandidate } from "@/lib/scoring";
-import { getRole, roles } from "@/lib/scorecards";
+import { availableRoles, getRole } from "@/lib/scorecards";
 import { finalDecisionReason, normalizePracticalOutcome, resolveFinalDecision } from "@/lib/optery-practical";
 import type { Criterion, Score } from "@/lib/types";
 import styles from "./evaluation-workspace.module.css";
@@ -178,7 +178,7 @@ export function EvaluationWorkspace() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [creating, setCreating] = useState(false);
   const [candidateName, setCandidateName] = useState("");
-  const [roleSlug, setRoleSlug] = useState(roles[0]?.slug ?? "");
+  const [roleSlug, setRoleSlug] = useState(availableRoles[0]?.slug ?? "");
   const [linkedin, setLinkedin] = useState("");
   const [showExtra, setShowExtra] = useState(false);
   const [currentRole, setCurrentRole] = useState("");
@@ -420,7 +420,7 @@ export function EvaluationWorkspace() {
 
               <div className={styles.formGrid}>
                 <label className={styles.field}><span>Candidate *</span><input value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Full name" autoFocus /></label>
-                <label className={styles.field}><span>Role *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>{roles.map((role) => <option key={role.slug} value={role.slug}>{role.client} · {role.role}</option>)}</select></label>
+                <label className={styles.field}><span>Role *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>{availableRoles.map((role) => <option key={role.slug} value={role.slug}>{role.client} · {role.role}</option>)}</select></label>
                 <label className={styles.field}><span>LinkedIn</span><input value={linkedin} onChange={(event) => setLinkedin(event.target.value)} placeholder="linkedin.com/in/..." /></label>
               </div>
 
