@@ -855,6 +855,10 @@ export const roles: RoleDefinition[] = [
 
 ];
 
+export const availableRoles = roles.filter((role) =>
+  role.slug === "optery-senior-backend" || role.slug === "examen-bdr",
+);
+
 export function getRole(slug: string) {
   return roles.find((role) => role.slug === slug);
 }
