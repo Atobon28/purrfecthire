@@ -592,7 +592,7 @@ export const roles: RoleDefinition[] = [
         placeholder: "e.g. 30 days",
       },
     ],
-  },,
+  },
 
   {
     slug: "examen-bdr",
