@@ -257,6 +257,20 @@
 }
 
 @media print {
+  :global(html),
+  :global(body) {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  :global(*),
+  :global(*::before),
+  :global(*::after) {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
   .page {
     padding: 0;
     background: #fff;
