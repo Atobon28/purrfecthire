@@ -425,7 +425,10 @@ export function EvaluationWorkspace() {
 
               <div className={styles.formGrid}>
                 <label className={styles.field}><span>Candidate *</span><input value={candidateName} onChange={(event) => setCandidateName(event.target.value)} placeholder="Full name" autoFocus /></label>
-                <label className={styles.field}><span>Role *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>{evaluationRoles.map((role) => <option key={role.slug} value={role.slug}>{role.client} · {role.role}</option>)}</select></label>
+                <label className={styles.field}><span>Role *</span><select value={roleSlug} onChange={(event) => setRoleSlug(event.target.value)}>
+  <option value="optery-senior-backend">Optery · Senior Backend Engineer</option>
+  <option value="examen-bdr">Examen · Business Development Representative</option>
+</select></label>
                 <label className={styles.field}><span>LinkedIn</span><input value={linkedin} onChange={(event) => setLinkedin(event.target.value)} placeholder="linkedin.com/in/..." /></label>
               </div>
 
