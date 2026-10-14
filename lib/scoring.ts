@@ -78,6 +78,62 @@ export function evaluateCandidate(
   const reasons: string[] = [];
   let decision: EvaluationResult["decision"] = "Hold";
 
+  if (role.slug === "examen-bdr") {
+    const missingCriteria = allCriteria.filter((criterion) => !isScoreKnown(scores[criterion.id]));
+    const redFlagCriteria = allCriteria.filter(
+      (criterion) => isScoreKnown(scores[criterion.id]) && Number(scores[criterion.id]) === 1,
+    );
+    const belowMinimumCriteria = allCriteria.filter(
+      (criterion) => isScoreKnown(scores[criterion.id]) && Number(scores[criterion.id]) < 3,
+    );
+    const keyDecisionCriteria = ["examen-persistence", "examen-coachable", "examen-outbound-writing"];
+    const belowKeyBar = keyDecisionCriteria.filter(
+      (criterionId) => isScoreKnown(scores[criterionId]) && Number(scores[criterionId]) < 4,
+    );
+
+    if (failedLogistics.length) {
+      decision = "Reject";
+      failedLogistics.forEach((check) => reasons.push(`${check.label} does not meet the role requirement.`));
+    } else if (unknownLogistics.length || missingCriteria.length) {
+      decision = "Hold";
+      unknownLogistics.forEach((check) => reasons.push(`${check.label} is still unknown.`));
+      if (missingCriteria.length) reasons.push("All ten Examen criteria must be scored before a final recommendation.");
+    } else if (redFlagCriteria.length) {
+      decision = "Reject";
+      redFlagCriteria.forEach((criterion) => reasons.push(`${criterion.label} is a red flag (1/5).`));
+    } else if (belowMinimumCriteria.length) {
+      decision = "Hold";
+      belowMinimumCriteria.forEach((criterion) => reasons.push(`${criterion.label} is below the minimum 3/5 bar.`));
+    } else if (belowKeyBar.length) {
+      decision = "Hold";
+      belowKeyBar.forEach((criterionId) => {
+        const criterion = allCriteria.find((item) => item.id === criterionId);
+        if (criterion) reasons.push(`${criterion.label} must be at least 4/5 to present the candidate.`);
+      });
+    } else {
+      decision = "Present";
+      reasons.push("SF in-person gate passes, the three decision-critical criteria are 4+, and no criterion is below 3.");
+    }
+
+    return {
+      technicalScore: technical.score,
+      operatingScore: operating.score,
+      overallScore,
+      technicalCoverage: technical.coverage,
+      operatingCoverage: operating.coverage,
+      decision,
+      reasons,
+      failedGates: [
+        ...failedLogistics.map((check) => check.id),
+        ...redFlagCriteria.map((criterion) => criterion.id),
+      ],
+      unknownGates: [
+        ...unknownLogistics.map((check) => check.id),
+        ...missingCriteria.map((criterion) => criterion.id),
+      ],
+    };
+  }
+
   if (failedGateCriteria.length || failedAlternativeGates.length || failedLogistics.length) {
     decision = "Reject";
     failedGateCriteria.forEach((criterion) =>
