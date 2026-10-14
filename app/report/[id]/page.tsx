@@ -163,7 +163,7 @@ export default async function CandidateReport({ params }: { params: Promise<{ id
               <h2>Technical screening</h2>
             </div>
 
-            <div className={styles.evidenceGrid}>
+            <div className={`${styles.evidenceGrid} ${styles.four}`}>
               {technicalScreeningItems.map((item) => (
                 <div className={styles.card} key={item.id}>
                   <b>Theoretical · {item.label}{item.score !== null && item.score !== undefined ? ` · ${item.score}/5` : ""}</b>
