@@ -3,7 +3,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.candidates (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  role_slug text not null check (role_slug in ('prosights-cto', 'casa-founding-engineer', 'optery-senior-backend')),
+  role_slug text not null check (role_slug in ('prosights-cto', 'casa-founding-engineer', 'optery-senior-backend', 'examen-bdr')),
   linkedin_url text,
   email text,
   location text,
